@@ -3,6 +3,10 @@ import crypto from "crypto";
 import { provisionCustomer } from "@/lib/provision";
 import { sendWelcomeEmail, sendProvisioningFailureEmail } from "@/lib/email";
 
+// Force dynamic rendering - prevent static generation at build time
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 const LINEAR_API_KEY = process.env.LINEAR_API_KEY || "";
 const LINEAR_TEAM_ID = process.env.LINEAR_TEAM_ID || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";

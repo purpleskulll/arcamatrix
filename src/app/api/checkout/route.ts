@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 
 const skillPrices: Record<string, number> = {
