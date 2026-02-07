@@ -1,7 +1,5 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export interface WelcomeEmailData {
   customerEmail: string;
   customerName: string;
@@ -13,6 +11,8 @@ export interface WelcomeEmailData {
 
 export async function sendWelcomeEmail(data: WelcomeEmailData) {
   try {
+    // Lazy-initialize Resend client to avoid build-time crashes
+    const resend = new Resend(process.env.RESEND_API_KEY || '');
     const skillsList = data.skills.map(skill => `• ${skill}`).join('\n');
 
     const emailHtml = `
@@ -166,6 +166,8 @@ export async function sendWelcomeEmail(data: WelcomeEmailData) {
 
 export async function sendProvisioningFailureEmail(customerEmail: string, customerName: string) {
   try {
+    // Lazy-initialize Resend client to avoid build-time crashes
+    const resend = new Resend(process.env.RESEND_API_KEY || '');
     const emailHtml = `
 <!DOCTYPE html>
 <html>
