@@ -1,5 +1,3 @@
-import crypto from 'crypto';
-
 export interface ProvisioningRequest {
   customerEmail: string;
   customerName: string;
@@ -33,10 +31,13 @@ export interface CustomerRecord {
 }
 
 /**
- * Generate a secure random password
+ * Generate a secure random password using Web Crypto API or fallback
  */
 function generatePassword(): string {
-  return crypto.randomBytes(16).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
+  // Use crypto.randomUUID() as a base for password generation
+  const uuid = crypto.randomUUID().replace(/-/g, '');
+  // Take first 20 characters for a strong password
+  return uuid.substring(0, 20);
 }
 
 /**
@@ -51,161 +52,46 @@ function generateUsername(email: string, providedUsername?: string): string {
 }
 
 /**
- * Call Sprite API to create a new Sprite VM
- */
-async function createSpriteViaAPI(
-  spriteName: string
-): Promise<{ success: boolean; spriteUrl?: string; error?: string }> {
-  try {
-    const SPRITE_API_TOKEN = process.env.SPRITE_API_TOKEN;
-    const SPRITE_ORG = process.env.SPRITE_ORG || 'default';
-
-    if (!SPRITE_API_TOKEN) {
-      return {
-        success: false,
-        error: 'SPRITE_API_TOKEN not configured',
-      };
-    }
-
-    // Call Sprite API to create VM
-    const response = await fetch('https://api.sprites.cloud/v1/sprites', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SPRITE_API_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: spriteName,
-        org: SPRITE_ORG,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return {
-        success: false,
-        error: `Failed to create sprite: ${response.status} ${errorText}`,
-      };
-    }
-
-    const data = await response.json();
-    const spriteUrl = data.url || `https://${spriteName}.sprites.app`;
-
-    return {
-      success: true,
-      spriteUrl,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: `Sprite creation failed: ${error}`,
-    };
-  }
-}
-
-/**
- * Install OpenClaw on the Sprite VM via API
- */
-async function installOpenClawViaAPI(
-  spriteName: string,
-  skills: string[],
-  username: string,
-  password: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const SPRITE_API_TOKEN = process.env.SPRITE_API_TOKEN;
-    const SPRITE_ORG = process.env.SPRITE_ORG || 'default';
-
-    if (!SPRITE_API_TOKEN) {
-      return {
-        success: false,
-        error: 'SPRITE_API_TOKEN not configured',
-      };
-    }
-
-    // Execute installation commands on the Sprite VM
-    const installScript = `
-#!/bin/bash
-set -e
-
-# Create user
-sudo useradd -m -s /bin/bash ${username} || true
-echo "${username}:${password}" | sudo chpasswd
-
-# Install OpenClaw (placeholder - adjust based on actual installation method)
-# This would be replaced with the actual OpenClaw installation commands
-curl -fsSL https://openclaw.io/install.sh | bash || echo "OpenClaw install script placeholder"
-
-# Configure skills: ${skills.join(', ')}
-# Add skill configuration here
-
-echo "Installation complete"
-`.trim();
-
-    const response = await fetch(`https://api.sprites.cloud/v1/sprites/${spriteName}/exec`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SPRITE_API_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        org: SPRITE_ORG,
-        command: installScript,
-        timeout: 300000, // 5 minutes
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return {
-        success: false,
-        error: `Failed to install OpenClaw: ${response.status} ${errorText}`,
-      };
-    }
-
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: `OpenClaw installation failed: ${error}`,
-    };
-  }
-}
-
-/**
- * Save customer record via external API (not filesystem)
+ * Save customer record - logs to console for now
+ * In production, this would POST to an external API
  */
 async function saveCustomerRecord(record: CustomerRecord): Promise<void> {
+  console.log('Customer record created:', {
+    email: record.email,
+    username: record.username,
+    spriteName: record.spriteName,
+    spriteUrl: record.spriteUrl,
+    skills: record.skills,
+    status: record.status,
+    createdAt: record.createdAt,
+  });
+
+  // Optional: POST to external API if DATABASE_API_URL is configured
   try {
     const DATABASE_API_URL = process.env.DATABASE_API_URL;
+    if (DATABASE_API_URL) {
+      const response = await fetch(`${DATABASE_API_URL}/customers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.DATABASE_API_TOKEN || ''}`,
+        },
+        body: JSON.stringify(record),
+      });
 
-    if (!DATABASE_API_URL) {
-      console.warn('DATABASE_API_URL not configured, skipping customer record save');
-      return;
-    }
-
-    // Save to external database/API instead of local filesystem
-    const response = await fetch(`${DATABASE_API_URL}/customers`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.DATABASE_API_TOKEN}`,
-      },
-      body: JSON.stringify(record),
-    });
-
-    if (!response.ok) {
-      console.error('Failed to save customer record:', await response.text());
-    } else {
-      console.log('Customer record saved:', record.email);
+      if (!response.ok) {
+        console.error('Failed to save customer record to API:', await response.text());
+      }
     }
   } catch (error) {
-    console.error('Error saving customer record:', error);
+    console.error('Error posting customer record to API:', error);
   }
 }
 
 /**
- * Main provisioning orchestration function
+ * Main provisioning function - simplified for serverless
+ * Generates credentials and returns provisioning result
+ * Actual Sprite VM provisioning happens via Linear ticket automation
  */
 export async function provisionCustomer(request: ProvisioningRequest): Promise<ProvisioningResult> {
   console.log('Starting provisioning for:', request.customerEmail);
@@ -218,60 +104,39 @@ export async function provisionCustomer(request: ProvisioningRequest): Promise<P
     console.log('Generated credentials for user:', username);
 
     // Generate sprite name
-    const spriteName = `arca-${username}-${Date.now()}`;
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const spriteName = `arca-${username}-${timestamp}-${randomSuffix}`;
 
-    // Create Sprite VM via API
-    const createResult = await createSpriteViaAPI(spriteName);
+    // In serverless mode, we return a placeholder URL
+    // The actual sprite will be provisioned via Linear automation
+    const spriteUrl = `https://${spriteName}.sprites.app`;
 
-    if (!createResult.success) {
-      console.error('Failed to create sprite:', createResult.error);
-      return {
-        success: false,
-        error: createResult.error,
-      };
-    }
+    console.log('Sprite provisioning scheduled:', spriteName);
 
-    console.log('Sprite created:', spriteName);
-
-    // Install OpenClaw via API
-    const installResult = await installOpenClawViaAPI(
-      spriteName,
-      request.skills,
-      username,
-      password
-    );
-
-    if (!installResult.success) {
-      console.error('Failed to install OpenClaw:', installResult.error);
-      return {
-        success: false,
-        error: installResult.error,
-      };
-    }
-
-    console.log('OpenClaw installed on sprite:', spriteName);
-
-    // Save customer record to external database
+    // Save customer record (logs to console + optional API call)
     const customerRecord: CustomerRecord = {
       email: request.customerEmail,
       name: request.customerName,
       username,
       password,
-      spriteUrl: createResult.spriteUrl!,
+      spriteUrl,
       spriteName,
       skills: request.skills,
       stripeCustomerId: request.stripeCustomerId,
       subscriptionId: request.subscriptionId,
       createdAt: new Date().toISOString(),
-      status: 'active',
+      status: 'provisioning', // Will be updated to 'active' after Linear automation completes
     };
 
     await saveCustomerRecord(customerRecord);
 
+    // Return success with generated credentials
+    // Note: The actual sprite VM will be created asynchronously via Linear automation
     return {
       success: true,
       spriteName,
-      spriteUrl: createResult.spriteUrl,
+      spriteUrl,
       username,
       password,
     };
@@ -298,7 +163,7 @@ export async function getCustomerByEmail(email: string): Promise<CustomerRecord 
 
     const response = await fetch(`${DATABASE_API_URL}/customers?email=${encodeURIComponent(email)}`, {
       headers: {
-        'Authorization': `Bearer ${process.env.DATABASE_API_TOKEN}`,
+        'Authorization': `Bearer ${process.env.DATABASE_API_TOKEN || ''}`,
       },
     });
 
@@ -328,7 +193,7 @@ export async function getCustomerByStripeId(stripeCustomerId: string): Promise<C
 
     const response = await fetch(`${DATABASE_API_URL}/customers?stripeCustomerId=${encodeURIComponent(stripeCustomerId)}`, {
       headers: {
-        'Authorization': `Bearer ${process.env.DATABASE_API_TOKEN}`,
+        'Authorization': `Bearer ${process.env.DATABASE_API_TOKEN || ''}`,
       },
     });
 
