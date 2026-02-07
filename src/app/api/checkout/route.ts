@@ -28,7 +28,7 @@ const BASE_PRICE = 1900; // $19 in cents
 
 export async function POST(request: Request) {
   try {
-    const { skills } = await request.json();
+    const { skills, email, name, username } = await request.json();
 
     if (!skills || !Array.isArray(skills)) {
       return NextResponse.json({ error: "Invalid skills" }, { status: 400 });
@@ -38,6 +38,35 @@ export async function POST(request: Request) {
     const skillsTotal = skills.reduce((sum: number, id: string) => sum + (skillPrices[id] || 0), 0);
     const total = BASE_PRICE + skillsTotal;
 
+    // Prepare checkout session parameters
+    const params: Record<string, string> = {
+      "mode": "subscription",
+      "success_url": `${process.env.NEXT_PUBLIC_URL || "http://localhost:3000"}/success?session_id={CHECKOUT_SESSION_ID}`,
+      "cancel_url": `${process.env.NEXT_PUBLIC_URL || "http://localhost:3000"}/`,
+      "line_items[0][price_data][currency]": "eur",
+      "line_items[0][price_data][product_data][name]": "Arcamatrix AI Assistant",
+      "line_items[0][price_data][product_data][description]": `Base + ${skills.length} skills: ${skills.join(", ")}`,
+      "line_items[0][price_data][unit_amount]": total.toString(),
+      "line_items[0][price_data][recurring][interval]": "month",
+      "line_items[0][quantity]": "1",
+      "metadata[skills]": JSON.stringify(skills),
+      "billing_address_collection": "required",
+      "customer_creation": "always",
+    };
+
+    // Pre-fill customer email if provided
+    if (email) {
+      params["customer_email"] = email;
+    }
+
+    // Store name and username in metadata
+    if (name) {
+      params["metadata[customer_name]"] = name;
+    }
+    if (username) {
+      params["metadata[username]"] = username;
+    }
+
     // Create Stripe checkout session
     const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
@@ -45,18 +74,7 @@ export async function POST(request: Request) {
         "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({
-        "mode": "subscription",
-        "success_url": `${process.env.NEXT_PUBLIC_URL || "http://localhost:3000"}/success?session_id={CHECKOUT_SESSION_ID}`,
-        "cancel_url": `${process.env.NEXT_PUBLIC_URL || "http://localhost:3000"}/`,
-        "line_items[0][price_data][currency]": "eur",
-        "line_items[0][price_data][product_data][name]": "Arcamatrix AI Assistant",
-        "line_items[0][price_data][product_data][description]": `Base + ${skills.length} skills: ${skills.join(", ")}`,
-        "line_items[0][price_data][unit_amount]": total.toString(),
-        "line_items[0][price_data][recurring][interval]": "month",
-        "line_items[0][quantity]": "1",
-        "metadata[skills]": JSON.stringify(skills),
-      }),
+      body: new URLSearchParams(params),
     });
 
     const session = await response.json();

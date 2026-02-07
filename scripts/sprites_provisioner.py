@@ -199,10 +199,75 @@ def process_queue():
     
     print(f"\nProcessed {len(results)} items")
 
+def provision_direct():
+    """Provision using input from PROVISIONING_INPUT environment variable."""
+    input_json = os.environ.get("PROVISIONING_INPUT")
+    if not input_json:
+        print("ERROR: PROVISIONING_INPUT environment variable not set", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        data = json.loads(input_json)
+        customer_email = data["customer_email"]
+        skills = data["skills"]
+        sprite_name = data.get("sprite_name")
+        username = data.get("username")
+
+        if not sprite_name:
+            customer_id = customer_email.split("@")[0].replace(".", "-")[:20]
+            sprite_name = f"arca-{customer_id}-{int(time.time())}"
+
+        provisioner = SpritesProvisioner()
+
+        # Create sprite
+        create_result = provisioner.create_sprite(sprite_name)
+        if not create_result["success"]:
+            print(f"ERROR: Failed to create sprite: {create_result.get('error')}", file=sys.stderr)
+            sys.exit(1)
+
+        # Install CLAWDBOT
+        install_result = provisioner.install_clawdbot(sprite_name, skills)
+        if not install_result["success"]:
+            print(f"ERROR: Failed to install CLAWDBOT: {install_result.get('error')}", file=sys.stderr)
+            sys.exit(1)
+
+        # Setup Gatekeeper
+        provisioner.setup_gatekeeper(sprite_name)
+
+        # Get sprite URL
+        url_result = provisioner.exec_on_sprite(sprite_name, "echo https://${sprite_name}.sprites.app")
+        sprite_url = f"https://{sprite_name}.sprites.app"
+
+        result = {
+            "success": True,
+            "sprite_name": sprite_name,
+            "sprite_url": sprite_url,
+            "customer_email": customer_email,
+            "skills": skills,
+            "username": username,
+            "provisioned_at": datetime.utcnow().isoformat()
+        }
+
+        print(f"\n✓ Provisioning complete!")
+        print(f"  Sprite Name: {sprite_name}")
+        print(f"  URL: {sprite_url}")
+        print(f"  Skills: {', '.join(skills)}")
+
+        # Output result as JSON for parsing
+        print("\n--- RESULT ---")
+        print(json.dumps(result))
+
+    except Exception as e:
+        print(f"ERROR: {str(e)}", file=sys.stderr)
+        sys.exit(1)
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "process":
         process_queue()
+    elif len(sys.argv) > 1 and sys.argv[1] == "provision":
+        provision_direct()
     else:
-        print("Usage: python sprites_provisioner.py process")
-        print("  Processes the provisioning queue")
+        print("Usage: python sprites_provisioner.py <command>")
+        print("  process   - Processes the provisioning queue")
+        print("  provision - Provision from PROVISIONING_INPUT env var")
