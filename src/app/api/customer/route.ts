@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import { getCustomerByEmail } from "@/lib/provision";
 
 export const dynamic = "force-dynamic";
 
@@ -13,32 +12,42 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Missing token" }, { status: 400 });
     }
 
-    // Read customer data from JSON file
-    const dataPath = path.join(process.cwd(), "data", "customers.json");
-
+    // Decode token to get email (token format: base64(email:timestamp))
     try {
-      const fileData = await fs.readFile(dataPath, "utf-8");
-      const customers = JSON.parse(fileData);
+      const decoded = Buffer.from(token, "base64").toString("utf-8");
+      const email = decoded.split(":")[0];
 
-      // Find customer by token
-      const customer = customers.find((c: any) => c.token === token);
-
-      if (!customer) {
-        return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+      if (!email) {
+        return NextResponse.json({ error: "Invalid token" }, { status: 400 });
       }
 
-      return NextResponse.json(customer);
-    } catch (fileError) {
-      // If file doesn't exist or is empty, return demo data
-      console.warn("Customer data file not found, using demo data");
+      // Try to fetch customer from external database
+      const customer = await getCustomerByEmail(email);
+
+      if (customer) {
+        return NextResponse.json({
+          email: customer.email,
+          name: customer.name,
+          skills: customer.skills,
+          spriteUrl: customer.spriteUrl,
+          status: customer.status,
+          username: customer.username,
+          token: token
+        });
+      }
+
+      // If no customer found, return demo data (for testing)
+      console.warn("Customer not found in database, returning demo data");
       return NextResponse.json({
-        email: "demo@example.com",
+        email: email,
         skills: ["whatsapp", "email", "calendar", "github"],
         spriteUrl: "https://demo.sprites.dev",
-        status: "online",
-        aiProvider: "anthropic",
+        status: "provisioning",
         token: token
       });
+    } catch (decodeError) {
+      console.error("Token decode error:", decodeError);
+      return NextResponse.json({ error: "Invalid token" }, { status: 400 });
     }
   } catch (error) {
     console.error("Customer lookup error:", error);
