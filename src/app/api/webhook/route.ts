@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { provisionCustomer } from "@/lib/provision";
+import { sendWelcomeEmail, sendProvisioningFailureEmail } from "@/lib/email";
 
 const LINEAR_API_KEY = process.env.LINEAR_API_KEY || "";
 const LINEAR_TEAM_ID = process.env.LINEAR_TEAM_ID || "";
@@ -82,34 +84,108 @@ export async function POST(request: Request) {
     // Handle checkout.session.completed
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
-      const customerEmail = session.customer_details?.email || "unknown";
+      const customerEmail = session.customer_details?.email || session.customer_email || "unknown";
+      const customerName = session.metadata?.customer_name || session.customer_details?.name || customerEmail.split("@")[0];
+      const username = session.metadata?.username;
       const skills = JSON.parse(session.metadata?.skills || "[]");
+      const stripeCustomerId = session.customer;
+      const subscriptionId = session.subscription;
 
-      // Create Linear ticket for provisioning
-      const issueTitle = `[PROVISION] New Arcamatrix for ${customerEmail}`;
-      const issueDescription = `
-## New Customer Provisioning Request
+      console.log("Processing checkout.session.completed for:", customerEmail);
+
+      // Provision the sprite and install OpenClaw
+      const provisioningResult = await provisionCustomer({
+        customerEmail,
+        customerName,
+        username,
+        skills,
+        stripeCustomerId,
+        subscriptionId,
+      });
+
+      if (provisioningResult.success) {
+        console.log("Provisioning successful:", provisioningResult.spriteName);
+
+        // Send welcome email with credentials
+        const emailResult = await sendWelcomeEmail({
+          customerEmail,
+          customerName,
+          username: provisioningResult.username!,
+          password: provisioningResult.password!,
+          spriteUrl: provisioningResult.spriteUrl!,
+          skills,
+        });
+
+        if (emailResult.success) {
+          console.log("Welcome email sent successfully");
+        } else {
+          console.error("Failed to send welcome email:", emailResult.error);
+        }
+
+        // Create Linear ticket for tracking
+        const issueTitle = `[PROVISIONED] ${customerEmail} - ${provisioningResult.spriteName}`;
+        const issueDescription = `
+## Customer Provisioned Successfully
 
 **Customer Email:** ${customerEmail}
+**Customer Name:** ${customerName}
+**Sprite Name:** ${provisioningResult.spriteName}
+**Sprite URL:** ${provisioningResult.spriteUrl}
+**Username:** ${provisioningResult.username}
+**Stripe Customer ID:** ${stripeCustomerId}
+**Subscription ID:** ${subscriptionId}
+
+### Selected Skills
+${skills.map((s: string) => `- ${s}`).join("\n")}
+
+**Status:** ACTIVE
+**Welcome Email:** ${emailResult.success ? "✓ Sent" : "✗ Failed"}
+        `.trim();
+
+        await createLinearIssue(issueTitle, issueDescription, []);
+
+        return NextResponse.json({
+          received: true,
+          provisioned: true,
+          spriteName: provisioningResult.spriteName
+        });
+      } else {
+        console.error("Provisioning failed:", provisioningResult.error);
+
+        // Send failure email
+        await sendProvisioningFailureEmail(customerEmail, customerName);
+
+        // Create Linear ticket for manual intervention
+        const issueTitle = `[PROVISION FAILED] ${customerEmail}`;
+        const issueDescription = `
+## Provisioning Failed - Manual Intervention Required
+
+**Customer Email:** ${customerEmail}
+**Customer Name:** ${customerName}
 **Stripe Session ID:** ${session.id}
-**Subscription ID:** ${session.subscription}
+**Subscription ID:** ${subscriptionId}
+**Error:** ${provisioningResult.error}
 
 ### Selected Skills
 ${skills.map((s: string) => `- ${s}`).join("\n")}
 
 ### Actions Required
-1. Spin up new Sprite VM
+1. Manually provision Sprite VM
 2. Install CLAWDBOT with selected skills
-3. Configure Gatekeeper security
-4. Send welcome email with dashboard link
+3. Send welcome email with credentials
+4. Update customer record
 
-**Status:** PROVISIONING_REQUIRED
-      `.trim();
+**Status:** MANUAL_PROVISIONING_REQUIRED
+        `.trim();
 
-      const result = await createLinearIssue(issueTitle, issueDescription, []);
-      console.log("Linear issue created:", result);
+        await createLinearIssue(issueTitle, issueDescription, []);
 
-      return NextResponse.json({ received: true, linear: result });
+        return NextResponse.json({
+          received: true,
+          provisioned: false,
+          error: provisioningResult.error
+        });
+      }
     }
 
     // Handle subscription cancellation
