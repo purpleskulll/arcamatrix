@@ -14,7 +14,8 @@ export async function GET(request: Request) {
 
     // Decode token to get email (token format: base64(email:timestamp))
     try {
-      const decoded = Buffer.from(token, "base64").toString("utf-8");
+      // Use atob instead of Buffer for serverless compatibility
+      const decoded = atob(token);
       const email = decoded.split(":")[0];
 
       if (!email) {

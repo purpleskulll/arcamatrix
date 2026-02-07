@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+const RESEND_API_URL = 'https://api.resend.com/emails';
 
 export interface WelcomeEmailData {
   customerEmail: string;
@@ -9,13 +9,10 @@ export interface WelcomeEmailData {
   skills: string[];
 }
 
-export async function sendWelcomeEmail(data: WelcomeEmailData) {
-  try {
-    // Lazy-initialize Resend client to avoid build-time crashes
-    const resend = new Resend(process.env.RESEND_API_KEY || '');
-    const skillsList = data.skills.map(skill => `• ${skill}`).join('\n');
+function buildWelcomeHtml(data: WelcomeEmailData): string {
+  const skillsList = data.skills.map(skill => `• ${skill}`).join('\n');
 
-    const emailHtml = `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -147,28 +144,11 @@ export async function sendWelcomeEmail(data: WelcomeEmailData) {
   </div>
 </body>
 </html>
-    `.trim();
-
-    const result = await resend.emails.send({
-      from: 'Arcamatrix <onboarding@arcamatrix.com>',
-      to: [data.customerEmail],
-      subject: '🎉 Your Arcamatrix AI Workspace is Ready!',
-      html: emailHtml,
-    });
-
-    console.log('Welcome email sent:', result);
-    return { success: true, messageId: result.data?.id };
-  } catch (error) {
-    console.error('Failed to send welcome email:', error);
-    return { success: false, error: String(error) };
-  }
+  `.trim();
 }
 
-export async function sendProvisioningFailureEmail(customerEmail: string, customerName: string) {
-  try {
-    // Lazy-initialize Resend client to avoid build-time crashes
-    const resend = new Resend(process.env.RESEND_API_KEY || '');
-    const emailHtml = `
+function buildProvisioningFailureHtml(customerName: string): string {
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -216,16 +196,77 @@ export async function sendProvisioningFailureEmail(customerEmail: string, custom
   </div>
 </body>
 </html>
-    `.trim();
+  `.trim();
+}
 
-    await resend.emails.send({
-      from: 'Arcamatrix <support@arcamatrix.com>',
-      to: [customerEmail],
-      subject: 'Arcamatrix Setup - Action Required',
-      html: emailHtml,
+export async function sendWelcomeEmail(data: WelcomeEmailData) {
+  try {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey || apiKey.startsWith('re_PLACEHOLDER')) {
+      console.log('RESEND_API_KEY not configured, skipping email');
+      return { success: true, skipped: true };
+    }
+
+    const res = await fetch(RESEND_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Arcamatrix <onboarding@arcamatrix.com>',
+        to: [data.customerEmail],
+        subject: '🎉 Your Arcamatrix AI Workspace is Ready!',
+        html: buildWelcomeHtml(data),
+      }),
     });
 
-    return { success: true };
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('Resend API error:', errorText);
+      return { success: false, error: errorText };
+    }
+
+    const result = await res.json();
+    console.log('Welcome email sent:', result);
+    return { success: true, messageId: result.id };
+  } catch (error) {
+    console.error('Failed to send welcome email:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function sendProvisioningFailureEmail(customerEmail: string, customerName: string) {
+  try {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey || apiKey.startsWith('re_PLACEHOLDER')) {
+      console.log('RESEND_API_KEY not configured, skipping email');
+      return { success: true, skipped: true };
+    }
+
+    const res = await fetch(RESEND_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Arcamatrix <support@arcamatrix.com>',
+        to: [customerEmail],
+        subject: 'Arcamatrix Setup - Action Required',
+        html: buildProvisioningFailureHtml(customerName),
+      }),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('Resend API error:', errorText);
+      return { success: false, error: errorText };
+    }
+
+    const result = await res.json();
+    console.log('Failure email sent:', result);
+    return { success: true, messageId: result.id };
   } catch (error) {
     console.error('Failed to send failure email:', error);
     return { success: false, error: String(error) };

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { provisionCustomer } from "@/lib/provision";
 import { sendWelcomeEmail, sendProvisioningFailureEmail } from "@/lib/email";
 
@@ -11,7 +10,7 @@ const LINEAR_API_KEY = process.env.LINEAR_API_KEY || "";
 const LINEAR_TEAM_ID = process.env.LINEAR_TEAM_ID || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 
-function verifyStripeSignature(payload: string, signature: string): boolean {
+async function verifyStripeSignature(payload: string, signature: string): Promise<boolean> {
   if (!STRIPE_WEBHOOK_SECRET) {
     console.warn("STRIPE_WEBHOOK_SECRET not configured");
     return false;
@@ -25,15 +24,38 @@ function verifyStripeSignature(payload: string, signature: string): boolean {
   }
 
   const signedPayload = `${timestamp}.${payload}`;
-  const expectedSig = crypto
-    .createHmac("sha256", STRIPE_WEBHOOK_SECRET)
-    .update(signedPayload)
-    .digest("hex");
 
-  return crypto.timingSafeEqual(
-    Buffer.from(sig),
-    Buffer.from(expectedSig)
+  // Use Web Crypto API instead of Node.js crypto
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(STRIPE_WEBHOOK_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
   );
+
+  const signature_bytes = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(signedPayload)
+  );
+
+  const expectedSig = Array.from(new Uint8Array(signature_bytes))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  // Constant-time comparison
+  if (sig.length !== expectedSig.length) {
+    return false;
+  }
+
+  let result = 0;
+  for (let i = 0; i < sig.length; i++) {
+    result |= sig.charCodeAt(i) ^ expectedSig.charCodeAt(i);
+  }
+
+  return result === 0;
 }
 
 async function createLinearIssue(title: string, description: string, labels: string[]) {
@@ -78,7 +100,7 @@ export async function POST(request: Request) {
     const signature = request.headers.get("stripe-signature");
 
     // Verify Stripe signature
-    if (signature && !verifyStripeSignature(body, signature)) {
+    if (signature && !(await verifyStripeSignature(body, signature))) {
       console.error("Invalid Stripe signature");
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }

@@ -12,8 +12,8 @@ export async function POST(request: Request) {
     }
 
     // Basic auth stub - in production would validate against customer database
-    // For now, generate a demo token
-    const token = Buffer.from(`${email}:${Date.now()}`).toString("base64");
+    // For now, generate a demo token using btoa instead of Buffer
+    const token = btoa(`${email}:${Date.now()}`);
 
     return NextResponse.json({
       success: true,
