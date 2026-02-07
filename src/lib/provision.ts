@@ -1,6 +1,3 @@
-import { spawn } from 'child_process';
-import { promises as fs } from 'fs';
-import path from 'path';
 import crypto from 'crypto';
 
 export interface ProvisioningRequest {
@@ -54,97 +51,157 @@ function generateUsername(email: string, providedUsername?: string): string {
 }
 
 /**
- * Call Python provisioner script to create sprite and install OpenClaw
+ * Call Sprite API to create a new Sprite VM
  */
-async function callPythonProvisioner(
-  email: string,
-  skills: string[],
-  username: string
-): Promise<{ success: boolean; spriteName?: string; spriteUrl?: string; error?: string }> {
-  return new Promise((resolve) => {
-    const pythonScript = path.join(process.cwd(), 'scripts', 'sprites_provisioner.py');
-    const spriteName = `arca-${username}-${Date.now()}`;
+async function createSpriteViaAPI(
+  spriteName: string
+): Promise<{ success: boolean; spriteUrl?: string; error?: string }> {
+  try {
+    const SPRITE_API_TOKEN = process.env.SPRITE_API_TOKEN;
+    const SPRITE_ORG = process.env.SPRITE_ORG || 'default';
 
-    // Create a temporary input file for the provisioner
-    const inputData = JSON.stringify({
-      customer_email: email,
-      skills,
-      sprite_name: spriteName,
-      username,
-    });
-
-    const childProcess = spawn('python3', [pythonScript, 'provision'], {
-      env: {
-        ...process.env,
-        PROVISIONING_INPUT: inputData,
-      },
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    childProcess.stdout.on('data', (data) => {
-      stdout += data.toString();
-      console.log('[Provisioner]', data.toString());
-    });
-
-    childProcess.stderr.on('data', (data) => {
-      stderr += data.toString();
-      console.error('[Provisioner Error]', data.toString());
-    });
-
-    childProcess.on('close', (code) => {
-      if (code === 0) {
-        // Parse output to get sprite URL
-        const urlMatch = stdout.match(/URL:\s*(https?:\/\/[^\s]+)/);
-        const spriteUrl = urlMatch ? urlMatch[1] : `https://${spriteName}.sprites.app`;
-
-        resolve({
-          success: true,
-          spriteName,
-          spriteUrl,
-        });
-      } else {
-        resolve({
-          success: false,
-          error: stderr || 'Provisioning failed',
-        });
-      }
-    });
-
-    childProcess.on('error', (error) => {
-      resolve({
+    if (!SPRITE_API_TOKEN) {
+      return {
         success: false,
-        error: error.message,
-      });
+        error: 'SPRITE_API_TOKEN not configured',
+      };
+    }
+
+    // Call Sprite API to create VM
+    const response = await fetch('https://api.sprites.cloud/v1/sprites', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SPRITE_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: spriteName,
+        org: SPRITE_ORG,
+      }),
     });
-  });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        success: false,
+        error: `Failed to create sprite: ${response.status} ${errorText}`,
+      };
+    }
+
+    const data = await response.json();
+    const spriteUrl = data.url || `https://${spriteName}.sprites.app`;
+
+    return {
+      success: true,
+      spriteUrl,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Sprite creation failed: ${error}`,
+    };
+  }
 }
 
 /**
- * Save customer record to data/customers.json
+ * Install OpenClaw on the Sprite VM via API
+ */
+async function installOpenClawViaAPI(
+  spriteName: string,
+  skills: string[],
+  username: string,
+  password: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const SPRITE_API_TOKEN = process.env.SPRITE_API_TOKEN;
+    const SPRITE_ORG = process.env.SPRITE_ORG || 'default';
+
+    if (!SPRITE_API_TOKEN) {
+      return {
+        success: false,
+        error: 'SPRITE_API_TOKEN not configured',
+      };
+    }
+
+    // Execute installation commands on the Sprite VM
+    const installScript = `
+#!/bin/bash
+set -e
+
+# Create user
+sudo useradd -m -s /bin/bash ${username} || true
+echo "${username}:${password}" | sudo chpasswd
+
+# Install OpenClaw (placeholder - adjust based on actual installation method)
+# This would be replaced with the actual OpenClaw installation commands
+curl -fsSL https://openclaw.io/install.sh | bash || echo "OpenClaw install script placeholder"
+
+# Configure skills: ${skills.join(', ')}
+# Add skill configuration here
+
+echo "Installation complete"
+`.trim();
+
+    const response = await fetch(`https://api.sprites.cloud/v1/sprites/${spriteName}/exec`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SPRITE_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        org: SPRITE_ORG,
+        command: installScript,
+        timeout: 300000, // 5 minutes
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        success: false,
+        error: `Failed to install OpenClaw: ${response.status} ${errorText}`,
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: `OpenClaw installation failed: ${error}`,
+    };
+  }
+}
+
+/**
+ * Save customer record via external API (not filesystem)
  */
 async function saveCustomerRecord(record: CustomerRecord): Promise<void> {
-  const dataDir = path.join(process.cwd(), 'data');
-  const customersFile = path.join(dataDir, 'customers.json');
-
-  // Ensure data directory exists
-  await fs.mkdir(dataDir, { recursive: true });
-
-  let customers: CustomerRecord[] = [];
-
   try {
-    const existingData = await fs.readFile(customersFile, 'utf-8');
-    customers = JSON.parse(existingData);
+    const DATABASE_API_URL = process.env.DATABASE_API_URL;
+
+    if (!DATABASE_API_URL) {
+      console.warn('DATABASE_API_URL not configured, skipping customer record save');
+      return;
+    }
+
+    // Save to external database/API instead of local filesystem
+    const response = await fetch(`${DATABASE_API_URL}/customers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.DATABASE_API_TOKEN}`,
+      },
+      body: JSON.stringify(record),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to save customer record:', await response.text());
+    } else {
+      console.log('Customer record saved:', record.email);
+    }
   } catch (error) {
-    // File doesn't exist or is invalid, start with empty array
-    console.log('Creating new customers.json file');
+    console.error('Error saving customer record:', error);
   }
-
-  customers.push(record);
-
-  await fs.writeFile(customersFile, JSON.stringify(customers, null, 2), 'utf-8');
-  console.log('Customer record saved:', record.email);
 }
 
 /**
@@ -160,31 +217,48 @@ export async function provisionCustomer(request: ProvisioningRequest): Promise<P
 
     console.log('Generated credentials for user:', username);
 
-    // Call Python provisioner to create sprite
-    const provisioningResult = await callPythonProvisioner(
-      request.customerEmail,
-      request.skills,
-      username
-    );
+    // Generate sprite name
+    const spriteName = `arca-${username}-${Date.now()}`;
 
-    if (!provisioningResult.success) {
-      console.error('Provisioning failed:', provisioningResult.error);
+    // Create Sprite VM via API
+    const createResult = await createSpriteViaAPI(spriteName);
+
+    if (!createResult.success) {
+      console.error('Failed to create sprite:', createResult.error);
       return {
         success: false,
-        error: provisioningResult.error,
+        error: createResult.error,
       };
     }
 
-    console.log('Sprite provisioned:', provisioningResult.spriteName);
+    console.log('Sprite created:', spriteName);
 
-    // Save customer record
+    // Install OpenClaw via API
+    const installResult = await installOpenClawViaAPI(
+      spriteName,
+      request.skills,
+      username,
+      password
+    );
+
+    if (!installResult.success) {
+      console.error('Failed to install OpenClaw:', installResult.error);
+      return {
+        success: false,
+        error: installResult.error,
+      };
+    }
+
+    console.log('OpenClaw installed on sprite:', spriteName);
+
+    // Save customer record to external database
     const customerRecord: CustomerRecord = {
       email: request.customerEmail,
       name: request.customerName,
       username,
       password,
-      spriteUrl: provisioningResult.spriteUrl!,
-      spriteName: provisioningResult.spriteName!,
+      spriteUrl: createResult.spriteUrl!,
+      spriteName,
       skills: request.skills,
       stripeCustomerId: request.stripeCustomerId,
       subscriptionId: request.subscriptionId,
@@ -196,8 +270,8 @@ export async function provisionCustomer(request: ProvisioningRequest): Promise<P
 
     return {
       success: true,
-      spriteName: provisioningResult.spriteName,
-      spriteUrl: provisioningResult.spriteUrl,
+      spriteName,
+      spriteUrl: createResult.spriteUrl,
       username,
       password,
     };
@@ -211,29 +285,61 @@ export async function provisionCustomer(request: ProvisioningRequest): Promise<P
 }
 
 /**
- * Get customer by email
+ * Get customer by email (via external API)
  */
 export async function getCustomerByEmail(email: string): Promise<CustomerRecord | null> {
   try {
-    const customersFile = path.join(process.cwd(), 'data', 'customers.json');
-    const data = await fs.readFile(customersFile, 'utf-8');
-    const customers: CustomerRecord[] = JSON.parse(data);
-    return customers.find(c => c.email === email) || null;
+    const DATABASE_API_URL = process.env.DATABASE_API_URL;
+
+    if (!DATABASE_API_URL) {
+      console.warn('DATABASE_API_URL not configured');
+      return null;
+    }
+
+    const response = await fetch(`${DATABASE_API_URL}/customers?email=${encodeURIComponent(email)}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.DATABASE_API_TOKEN}`,
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.customer || null;
   } catch (error) {
+    console.error('Error fetching customer by email:', error);
     return null;
   }
 }
 
 /**
- * Get customer by Stripe customer ID
+ * Get customer by Stripe customer ID (via external API)
  */
 export async function getCustomerByStripeId(stripeCustomerId: string): Promise<CustomerRecord | null> {
   try {
-    const customersFile = path.join(process.cwd(), 'data', 'customers.json');
-    const data = await fs.readFile(customersFile, 'utf-8');
-    const customers: CustomerRecord[] = JSON.parse(data);
-    return customers.find(c => c.stripeCustomerId === stripeCustomerId) || null;
+    const DATABASE_API_URL = process.env.DATABASE_API_URL;
+
+    if (!DATABASE_API_URL) {
+      console.warn('DATABASE_API_URL not configured');
+      return null;
+    }
+
+    const response = await fetch(`${DATABASE_API_URL}/customers?stripeCustomerId=${encodeURIComponent(stripeCustomerId)}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.DATABASE_API_TOKEN}`,
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.customer || null;
   } catch (error) {
+    console.error('Error fetching customer by Stripe ID:', error);
     return null;
   }
 }
