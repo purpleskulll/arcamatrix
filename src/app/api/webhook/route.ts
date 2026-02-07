@@ -1,7 +1,34 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 
 const LINEAR_API_KEY = process.env.LINEAR_API_KEY || "";
 const LINEAR_TEAM_ID = process.env.LINEAR_TEAM_ID || "";
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
+
+function verifyStripeSignature(payload: string, signature: string): boolean {
+  if (!STRIPE_WEBHOOK_SECRET) {
+    console.warn("STRIPE_WEBHOOK_SECRET not configured");
+    return false;
+  }
+
+  const timestamp = signature.split(",")[0]?.split("=")[1];
+  const sig = signature.split(",")[1]?.split("=")[1];
+
+  if (!timestamp || !sig) {
+    return false;
+  }
+
+  const signedPayload = `${timestamp}.${payload}`;
+  const expectedSig = crypto
+    .createHmac("sha256", STRIPE_WEBHOOK_SECRET)
+    .update(signedPayload)
+    .digest("hex");
+
+  return crypto.timingSafeEqual(
+    Buffer.from(sig),
+    Buffer.from(expectedSig)
+  );
+}
 
 async function createLinearIssue(title: string, description: string, labels: string[]) {
   const query = `
@@ -42,6 +69,14 @@ async function createLinearIssue(title: string, description: string, labels: str
 export async function POST(request: Request) {
   try {
     const body = await request.text();
+    const signature = request.headers.get("stripe-signature");
+
+    // Verify Stripe signature
+    if (signature && !verifyStripeSignature(body, signature)) {
+      console.error("Invalid Stripe signature");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+
     const event = JSON.parse(body);
 
     // Handle checkout.session.completed

@@ -5,16 +5,20 @@ Part of Arcamatrix swarm orchestration.
 """
 
 import json
+import os
+import shlex
 import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
 
-SPRITES_API_TOKEN = "arcamatrix-267/1465845/03788b2b6e768064118295fe4beae40f/764709362a3f921356d789348559a19c78202748dd41973a8b6771c989ed05a6"
+SPRITES_API_TOKEN = os.environ.get("SPRITES_API_TOKEN", "")
 
 class SpritesProvisioner:
     def __init__(self):
         self.token = SPRITES_API_TOKEN
+        if not self.token:
+            print("WARNING: SPRITES_API_TOKEN not set in environment")
         
     def create_sprite(self, name: str) -> dict:
         """Create a new sprite VM."""
@@ -45,8 +49,10 @@ class SpritesProvisioner:
     def exec_on_sprite(self, sprite_name: str, command: str) -> dict:
         """Execute a command on a sprite."""
         try:
+            # Use shlex.split for safe command parsing
+            cmd_parts = shlex.split(command)
             result = subprocess.run(
-                ["sprite", "-s", sprite_name, "exec", "--"] + command.split(),
+                ["sprite", "-s", sprite_name, "exec", "--"] + cmd_parts,
                 capture_output=True,
                 text=True,
                 timeout=300

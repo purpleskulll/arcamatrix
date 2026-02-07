@@ -7,6 +7,7 @@ Validates all commands before execution, blocks dangerous operations.
 import json
 import re
 import os
+import shlex
 import subprocess
 from pathlib import Path
 from datetime import datetime
@@ -173,9 +174,11 @@ class Gatekeeper:
             }
         
         try:
+            # Use shlex.split to safely parse command instead of shell=True
+            cmd_parts = shlex.split(command)
             result = subprocess.run(
-                command,
-                shell=True,
+                cmd_parts,
+                shell=False,
                 capture_output=True,
                 text=True,
                 timeout=timeout,

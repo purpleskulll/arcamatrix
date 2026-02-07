@@ -100,27 +100,70 @@ def trigger_provisioning(parsed: dict):
     print(f"  Ticket: {parsed['ticket_id']}")
     print(f"  Customer: {parsed['customer_email']}")
     print(f"  Skills: {parsed['skills']}")
-    
-    # TODO: Call sprites_provisioner.py to spin up new sprite
-    # TODO: Update Linear ticket status
-    
-    # For now, write to a queue file
-    queue_file = "/home/sprite/arcamatrix/provisioning_queue.json"
+
+    # Import and call sprites_provisioner
     try:
-        with open(queue_file, "r") as f:
-            queue = json.load(f)
-    except:
-        queue = []
-    
-    queue.append({
-        "timestamp": datetime.utcnow().isoformat(),
-        **parsed
-    })
-    
-    with open(queue_file, "w") as f:
-        json.dump(queue, f, indent=2)
-    
-    print(f"  Added to queue: {queue_file}")
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from sprites_provisioner import SpritesProvisioner
+
+        provisioner = SpritesProvisioner()
+        result = provisioner.provision_customer(
+            customer_email=parsed['customer_email'],
+            skills=parsed['skills'],
+            ticket_id=parsed['ticket_id']
+        )
+
+        if result['success']:
+            print(f"  ✓ Provisioning complete!")
+            print(f"  Sprite URL: {result['sprite_url']}")
+
+            # Save result to file
+            results_file = "/home/sprite/arcamatrix/provisioning_results.json"
+            try:
+                with open(results_file, "r") as f:
+                    results = json.load(f)
+            except:
+                results = []
+
+            results.append(result)
+            with open(results_file, "w") as f:
+                json.dump(results, f, indent=2)
+        else:
+            print(f"  ✗ Provisioning failed: {result.get('error')}")
+            # Fall back to queue file
+            queue_file = "/home/sprite/arcamatrix/provisioning_queue.json"
+            try:
+                with open(queue_file, "r") as f:
+                    queue = json.load(f)
+            except:
+                queue = []
+
+            queue.append({
+                "timestamp": datetime.utcnow().isoformat(),
+                **parsed
+            })
+
+            with open(queue_file, "w") as f:
+                json.dump(queue, f, indent=2)
+
+    except Exception as e:
+        print(f"  Error calling provisioner: {e}")
+        # Fall back to queue file
+        queue_file = "/home/sprite/arcamatrix/provisioning_queue.json"
+        try:
+            with open(queue_file, "r") as f:
+                queue = json.load(f)
+        except:
+            queue = []
+
+        queue.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            **parsed
+        })
+
+        with open(queue_file, "w") as f:
+            json.dump(queue, f, indent=2)
 
 def main():
     print(f"[{datetime.utcnow().isoformat()}] Linear Poller started")
