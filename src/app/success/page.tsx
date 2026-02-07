@@ -1,4 +1,17 @@
-export default function SuccessPage() {
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+
+function SuccessContent() {
+  const searchParams = useSearchParams();
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = searchParams.get("session_id");
+    setSessionId(id);
+  }, [searchParams]);
+
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
       <div className="text-center max-w-md">
@@ -33,13 +46,35 @@ export default function SuccessPage() {
           </ul>
         </div>
 
-        <a
-          href="/"
-          className="inline-block px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 transition"
-        >
-          Back to Home
-        </a>
+        <div className="space-y-3">
+          {sessionId && (
+            <a
+              href={`/dashboard?token=${sessionId}`}
+              className="inline-block w-full px-6 py-3 rounded-xl bg-arca-primary hover:bg-arca-primary/80 transition font-medium"
+            >
+              Go to Dashboard
+            </a>
+          )}
+          <a
+            href="/"
+            className="inline-block w-full px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 transition"
+          >
+            Back to Home
+          </a>
+        </div>
       </div>
     </main>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-arca-primary border-t-transparent rounded-full"></div>
+      </main>
+    }>
+      <SuccessContent />
+    </Suspense>
   );
 }
