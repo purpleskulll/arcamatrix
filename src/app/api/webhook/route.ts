@@ -129,6 +129,28 @@ export async function POST(request: Request) {
         subscriptionId,
       });
 
+      // Send provisioning task to swarm
+      try {
+        const swarmResponse = await fetch("https://swarm-orchestrator-bl4yi.sprites.app/api/add-task", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customerEmail,
+            customerName,
+            username: provisioningResult.username,
+            password: provisioningResult.password,
+            spriteName: provisioningResult.spriteName,
+            skills,
+            stripeCustomerId,
+            subscriptionId,
+          }),
+        });
+        const swarmResult = await swarmResponse.json();
+        console.log("Swarm provisioning task created:", swarmResult);
+      } catch (error) {
+        console.error("Failed to notify swarm:", error);
+      }
+
       if (provisioningResult.success) {
         console.log("Provisioning successful:", provisioningResult.spriteName);
 
