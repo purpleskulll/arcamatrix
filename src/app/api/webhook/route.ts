@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { provisionCustomer } from "@/lib/provision";
-import { sendWelcomeEmail, sendProvisioningFailureEmail } from "@/lib/email";
+import { sendWelcomeEmail } from "@/lib/email";
 
 // Force dynamic rendering - prevent static generation at build time
 export const dynamic = 'force-dynamic';
@@ -9,6 +8,7 @@ export const runtime = 'nodejs';
 const LINEAR_API_KEY = process.env.LINEAR_API_KEY || "";
 const LINEAR_TEAM_ID = process.env.LINEAR_TEAM_ID || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
+const SWARM_ORCHESTRATOR_URL = process.env.SWARM_ORCHESTRATOR_URL || "https://swarm-orchestrator-bl4yi.sprites.app";
 
 async function verifyStripeSignature(payload: string, signature: string): Promise<boolean> {
   if (!STRIPE_WEBHOOK_SECRET) {
@@ -56,6 +56,82 @@ async function verifyStripeSignature(payload: string, signature: string): Promis
   }
 
   return result === 0;
+}
+
+function generateUsername(email: string): string {
+  // Extract username from email and sanitize
+  const base = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+  return base.substring(0, 16);
+}
+
+function generateTaskId(): string {
+  // Generate PROV-YYYYMMDD-XXXX format
+  const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return `PROV-${date}-${random}`;
+}
+
+async function createProvisioningTask(data: {
+  customerEmail: string;
+  customerName: string;
+  username: string;
+  password: string;
+  skills: string[];
+  stripeCustomerId: string;
+  subscriptionId: string;
+}) {
+  const taskId = generateTaskId();
+
+  const response = await fetch(`${SWARM_ORCHESTRATOR_URL}/api/tasks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      taskId,
+      type: "provisioning",
+      status: "pending",
+      metadata: data
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create task: ${response.statusText}`);
+  }
+
+  return taskId;
+}
+
+async function createRecycleTask(username: string, subscriptionId: string) {
+  const taskId = `RECYCLE-${Date.now()}`;
+
+  const response = await fetch(`${SWARM_ORCHESTRATOR_URL}/api/tasks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      taskId,
+      type: "recycle",
+      status: "pending",
+      metadata: { username, subscriptionId }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to create recycle task: ${response.statusText}`);
+  }
+
+  return taskId;
+}
+
+async function findUsernameBySubscription(subscriptionId: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${SWARM_ORCHESTRATOR_URL}/api/tasks?subscriptionId=${subscriptionId}`);
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    return data.username || null;
+  } catch (error) {
+    console.error("Failed to lookup username:", error);
+    return null;
+  }
 }
 
 async function createLinearIssue(title: string, description: string, labels: string[]) {
@@ -112,56 +188,38 @@ export async function POST(request: Request) {
       const session = event.data.object;
       const customerEmail = session.customer_details?.email || session.customer_email || "unknown";
       const customerName = session.metadata?.customer_name || session.customer_details?.name || customerEmail.split("@")[0];
-      const username = session.metadata?.username;
       const skills = JSON.parse(session.metadata?.skills || "[]");
       const stripeCustomerId = session.customer;
       const subscriptionId = session.subscription;
 
+      // Generate username and password
+      const username = generateUsername(customerEmail);
+      const password = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
       console.log("Processing checkout.session.completed for:", customerEmail);
 
-      // Provision the sprite and install OpenClaw
-      const provisioningResult = await provisionCustomer({
-        customerEmail,
-        customerName,
-        username,
-        skills,
-        stripeCustomerId,
-        subscriptionId,
-      });
-
-      // Send provisioning task to swarm (use port 8081)
+      // Create provisioning task in blackboard
       try {
-        const swarmResponse = await fetch("http://swarm-oracle.internal:8081/api/add-task", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customerEmail,
-            customerName,
-            username: provisioningResult.username,
-            password: provisioningResult.password,
-            spriteName: provisioningResult.spriteName,
-            spriteUrl: provisioningResult.spriteUrl,
-            skills,
-            stripeCustomerId,
-            subscriptionId,
-          }),
+        const taskId = await createProvisioningTask({
+          customerEmail,
+          customerName,
+          username,
+          password,
+          skills,
+          stripeCustomerId,
+          subscriptionId,
         });
-        const swarmResult = await swarmResponse.json();
-        console.log("Swarm provisioning task created:", swarmResult);
-      } catch (error) {
-        console.error("Failed to notify swarm:", error);
-      }
 
-      if (provisioningResult.success) {
-        console.log("Provisioning successful:", provisioningResult.spriteName);
+        console.log(`✅ Provisioning task created: ${taskId}`);
 
-        // Send welcome email with credentials
+        // Send welcome email with credentials (provisioning will happen async)
+        const spriteUrl = `https://${username}.arcamatrix.com`;
         const emailResult = await sendWelcomeEmail({
           customerEmail,
           customerName,
-          username: provisioningResult.username!,
-          password: provisioningResult.password!,
-          spriteUrl: provisioningResult.spriteUrl!,
+          username,
+          password,
+          spriteUrl,
           skills,
         });
 
@@ -172,22 +230,22 @@ export async function POST(request: Request) {
         }
 
         // Create Linear ticket for tracking
-        const issueTitle = `[PROVISIONED] ${customerEmail} - ${provisioningResult.spriteName}`;
+        const issueTitle = `[PROVISIONING] ${customerEmail} - Task ${taskId}`;
         const issueDescription = `
-## Customer Provisioned Successfully
+## Customer Provisioning Started
 
+**Task ID:** ${taskId}
 **Customer Email:** ${customerEmail}
 **Customer Name:** ${customerName}
-**Sprite Name:** ${provisioningResult.spriteName}
-**Sprite URL:** ${provisioningResult.spriteUrl}
-**Username:** ${provisioningResult.username}
+**Username:** ${username}
+**Customer URL:** ${spriteUrl}
 **Stripe Customer ID:** ${stripeCustomerId}
 **Subscription ID:** ${subscriptionId}
 
 ### Selected Skills
 ${skills.map((s: string) => `- ${s}`).join("\n")}
 
-**Status:** ACTIVE
+**Status:** PENDING (agent will provision automatically)
 **Welcome Email:** ${emailResult.success ? "✓ Sent" : "✗ Failed"}
         `.trim();
 
@@ -195,72 +253,120 @@ ${skills.map((s: string) => `- ${s}`).join("\n")}
 
         return NextResponse.json({
           received: true,
-          provisioned: true,
-          spriteName: provisioningResult.spriteName
+          taskId,
+          username,
+          spriteUrl
         });
-      } else {
-        console.error("Provisioning failed:", provisioningResult.error);
-
-        // Send failure email
-        await sendProvisioningFailureEmail(customerEmail, customerName);
+      } catch (error) {
+        console.error("Failed to create provisioning task:", error);
 
         // Create Linear ticket for manual intervention
         const issueTitle = `[PROVISION FAILED] ${customerEmail}`;
         const issueDescription = `
-## Provisioning Failed - Manual Intervention Required
+## Provisioning Task Creation Failed
 
 **Customer Email:** ${customerEmail}
 **Customer Name:** ${customerName}
 **Stripe Session ID:** ${session.id}
 **Subscription ID:** ${subscriptionId}
-**Error:** ${provisioningResult.error}
+**Error:** ${error instanceof Error ? error.message : String(error)}
 
 ### Selected Skills
 ${skills.map((s: string) => `- ${s}`).join("\n")}
 
 ### Actions Required
-1. Manually provision Sprite VM
-2. Install CLAWDBOT with selected skills
+1. Manually create PROV-* task in blackboard
+2. Or manually provision Sprite VM
 3. Send welcome email with credentials
-4. Update customer record
 
-**Status:** MANUAL_PROVISIONING_REQUIRED
+**Status:** MANUAL_INTERVENTION_REQUIRED
         `.trim();
 
         await createLinearIssue(issueTitle, issueDescription, []);
 
         return NextResponse.json({
           received: true,
-          provisioned: false,
-          error: provisioningResult.error
-        });
+          error: "Failed to create provisioning task"
+        }, { status: 500 });
       }
     }
 
     // Handle subscription cancellation
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object;
+      const subscriptionId = subscription.id;
+      const customerId = subscription.customer;
 
-      const issueTitle = `[TERMINATE] Subscription cancelled: ${subscription.id}`;
-      const issueDescription = `
-## Subscription Cancellation
+      console.log("Processing customer.subscription.deleted for:", subscriptionId);
 
-**Subscription ID:** ${subscription.id}
-**Customer ID:** ${subscription.customer}
+      // Find username by searching for subscriptionId
+      try {
+        const username = await findUsernameBySubscription(subscriptionId);
+
+        if (username) {
+          // Create recycling task
+          const taskId = await createRecycleTask(username, subscriptionId);
+          console.log(`✅ Recycling task created: ${taskId}`);
+
+          const issueTitle = `[RECYCLE] ${username} - Task ${taskId}`;
+          const issueDescription = `
+## Subscription Cancelled - Recycling Sprite
+
+**Task ID:** ${taskId}
+**Username:** ${username}
+**Subscription ID:** ${subscriptionId}
+**Customer ID:** ${customerId}
+
+### Actions (Automated)
+1. ✓ Clean customer data from sprite
+2. ✓ Remove customer mapping from proxy
+3. ✓ Return sprite to available pool
+
+**Status:** PENDING (agent will recycle automatically)
+          `.trim();
+
+          await createLinearIssue(issueTitle, issueDescription, []);
+
+          return NextResponse.json({
+            received: true,
+            taskId,
+            username
+          });
+        } else {
+          console.warn("Could not find username for subscription:", subscriptionId);
+
+          const issueTitle = `[MANUAL RECYCLE] Subscription ${subscriptionId}`;
+          const issueDescription = `
+## Subscription Cancelled - Manual Cleanup Required
+
+**Subscription ID:** ${subscriptionId}
+**Customer ID:** ${customerId}
+
+**Issue:** Could not automatically identify username/sprite for this subscription.
 
 ### Actions Required
-1. Identify associated Sprite VM
-2. Backup customer data (if applicable)
-3. Terminate Sprite VM
-4. Update customer status
+1. Manually lookup customer by subscription ID
+2. Run: \`python3 /home/sprite/recycle_sprite.py <username>\`
+3. Verify sprite returned to pool
 
-**Status:** TERMINATION_REQUIRED
-      `.trim();
+**Status:** MANUAL_CLEANUP_REQUIRED
+          `.trim();
 
-      const result = await createLinearIssue(issueTitle, issueDescription, []);
-      console.log("Linear issue created for termination:", result);
+          await createLinearIssue(issueTitle, issueDescription, []);
 
-      return NextResponse.json({ received: true, linear: result });
+          return NextResponse.json({
+            received: true,
+            warning: "Manual cleanup required"
+          });
+        }
+      } catch (error) {
+        console.error("Failed to create recycling task:", error);
+
+        return NextResponse.json({
+          received: true,
+          error: "Failed to create recycling task"
+        }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ received: true });
