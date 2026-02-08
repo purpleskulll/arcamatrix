@@ -76,18 +76,31 @@ export async function POST(request: Request) {
     );
     const total = BASE_PRICE_CENTS + skillsTotal;
 
-    // Build URLs with explicit fallback logic
+// Build URLs with explicit fallback logic
     // Get baseUrl from request headers (more reliable than NEXT_PUBLIC_URL)
     const host = request.headers.get("host") || "arcamatrix.com";
     const protocol = host.includes("localhost") ? "http" : "https";
-    const baseUrl = process.env.NEXT_PUBLIC_URL || `${protocol}://${host}`;
+    let baseUrl = process.env.NEXT_PUBLIC_URL || `${protocol}://${host}`;
+    
+    // Failsafe: ensure baseUrl is never empty and always uses arcamatrix.com in production
+    if (!baseUrl || baseUrl === "undefined" || !baseUrl.startsWith("http")) {
+      baseUrl = "https://arcamatrix.com";
+    }
     
     console.log("Request host:", host);
     console.log("Derived baseUrl:", baseUrl);
     
-    // Stripe checkout URLs
+    // Stripe checkout URLs  
     const successUrl = `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${baseUrl}/`;
+
+    // Validate URLs before sending to Stripe
+    if (!successUrl.startsWith("http") || !cancelUrl.startsWith("http")) {
+      console.error("Invalid URLs generated:", { successUrl, cancelUrl });
+      return NextResponse.json({
+        error: "Configuration error: invalid redirect URLs"
+      }, { status: 500 });
+    }
 
     console.log("Checkout URLs:", { baseUrl, successUrl, cancelUrl });
 
