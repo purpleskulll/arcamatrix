@@ -62,7 +62,6 @@ export async function POST(request: Request) {
       "line_items[0][price_data][recurring][interval]": "month",
       "line_items[0][quantity]": "1",
       "billing_address_collection": "required",
-      "customer_creation": "always",
       "metadata[skills]": JSON.stringify(skills),
     });
 
