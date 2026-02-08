@@ -108,9 +108,9 @@ export async function provisionCustomer(request: ProvisioningRequest): Promise<P
     const randomSuffix = Math.random().toString(36).substring(2, 8);
     const spriteName = `arca-${username}-${timestamp}-${randomSuffix}`;
 
-    // In serverless mode, we return a placeholder URL
-    // The actual sprite will be provisioned via Linear automation
-    const spriteUrl = `https://${spriteName}.sprites.app`;
+    // Use custom subdomain instead of .sprites.app
+    const spriteUrl = `https://${username}.arcamatrix.com`;
+    const internalSpriteUrl = `https://${spriteName}.sprites.app`;
 
     console.log('Sprite provisioning scheduled:', spriteName);
 
@@ -128,6 +128,9 @@ export async function provisionCustomer(request: ProvisioningRequest): Promise<P
       createdAt: new Date().toISOString(),
       status: 'provisioning', // Will be updated to 'active' after Linear automation completes
     };
+
+    // Store internal sprite URL in metadata for provisioning
+    (customerRecord as any).internalSpriteUrl = internalSpriteUrl;
 
     await saveCustomerRecord(customerRecord);
 

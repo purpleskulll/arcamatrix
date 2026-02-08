@@ -129,9 +129,9 @@ export async function POST(request: Request) {
         subscriptionId,
       });
 
-      // Send provisioning task to swarm
+      // Send provisioning task to swarm (use port 8081)
       try {
-        const swarmResponse = await fetch("https://swarm-orchestrator-bl4yi.sprites.app/api/add-task", {
+        const swarmResponse = await fetch("http://swarm-oracle.internal:8081/api/add-task", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -140,6 +140,7 @@ export async function POST(request: Request) {
             username: provisioningResult.username,
             password: provisioningResult.password,
             spriteName: provisioningResult.spriteName,
+            spriteUrl: provisioningResult.spriteUrl,
             skills,
             stripeCustomerId,
             subscriptionId,
