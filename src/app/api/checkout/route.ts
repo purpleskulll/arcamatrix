@@ -1,11 +1,34 @@
 import { NextResponse } from "next/server";
-import { validateSkillIds, getSkillPricesInCents } from "@/lib/skills";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const BASE_PRICE_CENTS = 1900;
+
+// Inline skill validation and prices to avoid import issues
+const SKILLS_BY_ID: Record<string, { price: number }> = {
+  whatsapp: { price: 5 }, telegram: { price: 5 }, discord: { price: 5 },
+  slack: { price: 5 }, email: { price: 5 }, imessage: { price: 7 },
+  signal: { price: 5 }, calendar: { price: 3 }, notion: { price: 4 },
+  obsidian: { price: 4 }, trello: { price: 3 }, github: { price: 5 },
+  spotify: { price: 3 }, youtube: { price: 3 }, hue: { price: 3 },
+  homekit: { price: 4 }, weather: { price: 2 }, "web-search": { price: 3 },
+  voice: { price: 8 }
+};
+
+function validateSkillIds(skillIds: string[]): { valid: boolean; invalid: string[] } {
+  const invalid = skillIds.filter(id => !SKILLS_BY_ID[id]);
+  return { valid: invalid.length === 0, invalid };
+}
+
+function getSkillPricesInCents(): Record<string, number> {
+  const prices: Record<string, number> = {};
+  for (const [id, skill] of Object.entries(SKILLS_BY_ID)) {
+    prices[id] = skill.price * 100;
+  }
+  return prices;
+}
 
 export async function POST(request: Request) {
   try {
@@ -25,7 +48,6 @@ export async function POST(request: Request) {
     const skillsTotal = skills.reduce((sum: number, id: string) => sum + (skillPrices[id] || 0), 0);
     const total = BASE_PRICE_CENTS + skillsTotal;
 
-    // Hardcoded URLs - simple and reliable
     const successUrl = "https://arcamatrix.com/success?session_id={CHECKOUT_SESSION_ID}";
     const cancelUrl = "https://arcamatrix.com/";
 
@@ -44,8 +66,6 @@ export async function POST(request: Request) {
       "metadata[skills]": JSON.stringify(skills),
     });
 
-    console.log("Creating Stripe checkout session...");
-
     const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
       headers: {
@@ -63,11 +83,9 @@ export async function POST(request: Request) {
     }
 
     if (!session.url) {
-      console.error("No URL in response:", session);
       return NextResponse.json({ error: "No checkout URL returned" }, { status: 500 });
     }
 
-    console.log("Success! Checkout URL:", session.url);
     return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error("Checkout error:", error);
