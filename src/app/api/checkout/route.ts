@@ -8,13 +8,32 @@ const BASE_PRICE_CENTS = 1900;
 
 // Inline skill validation and prices to avoid import issues
 const SKILLS_BY_ID: Record<string, { price: number }> = {
+  // Messaging & Communication
   whatsapp: { price: 5 }, telegram: { price: 5 }, discord: { price: 5 },
   slack: { price: 5 }, email: { price: 5 }, imessage: { price: 7 },
-  signal: { price: 5 }, calendar: { price: 3 }, notion: { price: 4 },
-  obsidian: { price: 4 }, trello: { price: 3 }, github: { price: 5 },
-  spotify: { price: 3 }, youtube: { price: 3 }, hue: { price: 3 },
-  homekit: { price: 4 }, weather: { price: 2 }, "web-search": { price: 3 },
-  voice: { price: 8 }
+  signal: { price: 5 },
+
+  // Productivity & Notes
+  notion: { price: 4 }, obsidian: { price: 4 }, trello: { price: 3 },
+  "apple-notes": { price: 3 }, "apple-reminders": { price: 3 },
+  "bear-notes": { price: 4 }, "things": { price: 4 },
+
+  // Development
+  github: { price: 5 }, "coding-agent": { price: 8 },
+
+  // Media & Entertainment
+  spotify: { price: 3 }, youtube: { price: 3 },
+
+  // Smart Home
+  hue: { price: 3 }, homekit: { price: 4 },
+
+  // Utilities
+  weather: { price: 2 }, "web-search": { price: 3 }, voice: { price: 8 },
+  calendar: { price: 3 }, "1password": { price: 5 },
+
+  // AI & Advanced
+  canvas: { price: 6 }, gemini: { price: 6 }, summarize: { price: 4 },
+  "video-frames": { price: 5 }, "image-gen": { price: 5 }
 };
 
 function validateSkillIds(skillIds: string[]): { valid: boolean; invalid: string[] } {
