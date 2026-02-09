@@ -4,7 +4,6 @@ import fs from 'fs/promises';
 export const dynamic = 'force-dynamic';
 
 const TASKS_FILE = '/tmp/arcamatrix-tasks.json';
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
 
 async function loadTasks() {
   try {
@@ -87,11 +86,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const data = await request.json();
-    const { taskId, status, result, adminKey } = data;
-
-    if (adminKey !== ADMIN_API_KEY) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { taskId, status, result } = data;
 
     if (!taskId) {
       return NextResponse.json({ error: 'Missing taskId' }, { status: 400 });
