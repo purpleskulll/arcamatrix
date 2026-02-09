@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendWelcomeEmail } from "@/lib/email";
+import { createTask, findBySubscription } from "@/lib/tasks";
 
 // Force dynamic rendering - prevent static generation at build time
 export const dynamic = 'force-dynamic';
@@ -8,11 +9,6 @@ export const runtime = 'nodejs';
 const LINEAR_API_KEY = process.env.LINEAR_API_KEY || "";
 const LINEAR_TEAM_ID = process.env.LINEAR_TEAM_ID || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
-
-// Tasks stored on Vercel via /api/tasks
-const TASKS_API_BASE = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "https://arcamatrix.com";
 
 async function verifyStripeSignature(payload: string, signature: string): Promise<boolean> {
   if (!STRIPE_WEBHOOK_SECRET) {
@@ -85,47 +81,19 @@ async function createProvisioningTask(data: {
   subscriptionId: string;
 }) {
   const taskId = generateTaskId();
-
-  const response = await fetch(`${TASKS_API_BASE}/api/tasks`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ taskId, type: "provisioning", status: "pending", metadata: data })
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Failed to create task: ${err}`);
-  }
-
+  await createTask(taskId, "provisioning", data);
   return taskId;
 }
 
 async function createRecycleTask(username: string, subscriptionId: string) {
   const taskId = `RECYCLE-${Date.now()}`;
-
-  const response = await fetch(`${TASKS_API_BASE}/api/tasks`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ taskId, type: "recycle", status: "pending", metadata: { username, subscriptionId } })
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to create recycle task: ${response.statusText}`);
-  }
-
+  await createTask(taskId, "recycle", { username, subscriptionId });
   return taskId;
 }
 
 async function findUsernameBySubscription(subscriptionId: string): Promise<string | null> {
-  try {
-    const response = await fetch(`${TASKS_API_BASE}/api/tasks?subscriptionId=${subscriptionId}`);
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.username || null;
-  } catch (error) {
-    console.error("Failed to lookup username:", error);
-    return null;
-  }
+  const result = await findBySubscription(subscriptionId);
+  return result?.username || null;
 }
 
 async function createLinearIssue(title: string, description: string, labels: string[]) {
