@@ -9,11 +9,10 @@ const LINEAR_API_KEY = process.env.LINEAR_API_KEY || "";
 const LINEAR_TEAM_ID = process.env.LINEAR_TEAM_ID || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 
-// Sprites API for direct blackboard access
-const SPRITES_API = "https://api.sprites.dev/v1";
-const SPRITES_TOKEN = process.env.SPRITES_TOKEN || "";
-const SWARM_SPRITE = "swarm-orchestrator";
-const BLACKBOARD_PATH = "/home/sprite/swarm-orchestrator/blackboard/tasks.json";
+// Tasks stored on Vercel via /api/tasks
+const TASKS_API_BASE = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : "https://arcamatrix.com";
 
 async function verifyStripeSignature(payload: string, signature: string): Promise<boolean> {
   if (!STRIPE_WEBHOOK_SECRET) {
@@ -76,37 +75,6 @@ function generateTaskId(): string {
   return `PROV-${date}-${random}`;
 }
 
-async function readBlackboard(): Promise<any> {
-  // Read tasks.json from swarm-orchestrator via Sprites filesystem API
-  const url = `${SPRITES_API}/sprites/${SWARM_SPRITE}/fs/read?path=${encodeURIComponent(BLACKBOARD_PATH)}`;
-  const response = await fetch(url, {
-    headers: { "Authorization": `Bearer ${SPRITES_TOKEN}` }
-  });
-
-  if (!response.ok) {
-    // File might not exist yet
-    if (response.status === 404) return { tasks: {} };
-    throw new Error(`Failed to read blackboard: ${response.statusText}`);
-  }
-
-  const text = await response.text();
-  return JSON.parse(text);
-}
-
-async function writeBlackboard(blackboard: any): Promise<void> {
-  // Write tasks.json to swarm-orchestrator via Sprites filesystem API
-  const url = `${SPRITES_API}/sprites/${SWARM_SPRITE}/fs/write?path=${encodeURIComponent(BLACKBOARD_PATH)}&mkdir=true`;
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "Authorization": `Bearer ${SPRITES_TOKEN}` },
-    body: JSON.stringify(blackboard, null, 2)
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to write blackboard: ${response.statusText}`);
-  }
-}
-
 async function createProvisioningTask(data: {
   customerEmail: string;
   customerName: string;
@@ -117,47 +85,43 @@ async function createProvisioningTask(data: {
   subscriptionId: string;
 }) {
   const taskId = generateTaskId();
-  const blackboard = await readBlackboard();
 
-  blackboard.tasks[taskId] = {
-    type: "provisioning",
-    status: "pending",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    metadata: data
-  };
+  const response = await fetch(`${TASKS_API_BASE}/api/tasks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ taskId, type: "provisioning", status: "pending", metadata: data })
+  });
 
-  await writeBlackboard(blackboard);
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Failed to create task: ${err}`);
+  }
+
   return taskId;
 }
 
 async function createRecycleTask(username: string, subscriptionId: string) {
   const taskId = `RECYCLE-${Date.now()}`;
-  const blackboard = await readBlackboard();
 
-  blackboard.tasks[taskId] = {
-    type: "recycle",
-    status: "pending",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    metadata: { username, subscriptionId }
-  };
+  const response = await fetch(`${TASKS_API_BASE}/api/tasks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ taskId, type: "recycle", status: "pending", metadata: { username, subscriptionId } })
+  });
 
-  await writeBlackboard(blackboard);
+  if (!response.ok) {
+    throw new Error(`Failed to create recycle task: ${response.statusText}`);
+  }
+
   return taskId;
 }
 
 async function findUsernameBySubscription(subscriptionId: string): Promise<string | null> {
   try {
-    const blackboard = await readBlackboard();
-
-    for (const [taskId, task] of Object.entries(blackboard.tasks) as any) {
-      if (task.type === "provisioning" && task.metadata?.subscriptionId === subscriptionId) {
-        return task.metadata?.username || null;
-      }
-    }
-
-    return null;
+    const response = await fetch(`${TASKS_API_BASE}/api/tasks?subscriptionId=${subscriptionId}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.username || null;
   } catch (error) {
     console.error("Failed to lookup username:", error);
     return null;
