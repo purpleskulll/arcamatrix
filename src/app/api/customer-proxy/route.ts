@@ -38,8 +38,13 @@ export async function POST(request: Request) {
     const { action, username, spriteUrl, spriteName, adminKey } = body;
 
     // Simple auth - in production use proper auth
-    if (adminKey !== process.env.ADMIN_API_KEY) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const expectedKey = process.env.ADMIN_API_KEY;
+    if (!expectedKey) {
+      console.error('ADMIN_API_KEY env var not set!');
+    }
+    if (adminKey !== expectedKey) {
+      console.error(`Auth failed: got key length ${adminKey?.length}, expected length ${expectedKey?.length}`);
+      return NextResponse.json({ error: 'Unauthorized', envSet: !!expectedKey }, { status: 401 });
     }
 
     const mappings = await loadMappings();
