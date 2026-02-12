@@ -14,8 +14,10 @@ export const config = {
   ],
 };
 
-// Customer sprite mapping - in production, this should be a database lookup
-const customerMappings: Record<string, string> = {};
+// Customer sprite mapping - hardcoded for reliability (Vercel /tmp is ephemeral)
+const customerMappings: Record<string, string> = {
+  'justustheile': 'https://arca-customer-001-bl4yi.sprites.app',
+};
 
 export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
@@ -84,9 +86,13 @@ export async function middleware(request: NextRequest) {
 }
 
 async function lookupCustomerSprite(username: string): Promise<{ spriteUrl: string } | null> {
+  // Check hardcoded mappings first (reliable, no cold-start issues)
+  if (customerMappings[username]) {
+    return { spriteUrl: customerMappings[username] };
+  }
+
+  // Fallback: query the API for dynamically provisioned customers
   try {
-    // In production, this should query a database
-    // For now, query our internal API
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_BASE_URL || 'https://arcamatrix.com'}/api/customer-proxy?username=${username}`,
       { cache: 'no-store' }
