@@ -4,7 +4,7 @@ export interface WelcomeEmailData {
   customerEmail: string;
   customerName: string;
   username: string;
-  password: string;
+  gatewayToken: string;
   spriteUrl: string;
   skills: string[];
 }
@@ -101,15 +101,11 @@ function buildWelcomeHtml(data: WelcomeEmailData): string {
         <span class="credential-value">${data.spriteUrl}</span>
       </div>
       <div class="credential-row">
-        <span class="credential-label">Username:</span>
-        <span class="credential-value">${data.username}</span>
-      </div>
-      <div class="credential-row">
-        <span class="credential-label">Password:</span>
-        <span class="credential-value">${data.password}</span>
+        <span class="credential-label">Access Token:</span>
+        <span class="credential-value">${data.gatewayToken}</span>
       </div>
       <p style="margin-top: 15px; color: #6b7280; font-size: 14px;">
-        ⚠️ Please save these credentials securely. You can change your password after logging in.
+        Please save your access token securely. You'll need it to log in to your workspace.
       </p>
     </div>
 
@@ -125,7 +121,7 @@ function buildWelcomeHtml(data: WelcomeEmailData): string {
     <h3 style="color: #667eea;">Getting Started</h3>
     <ol style="color: #4b5563;">
       <li>Click the button above to access your workspace</li>
-      <li>Log in with your credentials</li>
+      <li>Log in with your access token</li>
       <li>Start chatting with your AI assistant</li>
       <li>Your assistant can access all the skills you've selected</li>
     </ol>

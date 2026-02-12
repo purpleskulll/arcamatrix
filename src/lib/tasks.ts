@@ -6,7 +6,8 @@ export interface TaskMetadata {
   customerEmail?: string;
   customerName?: string;
   username?: string;
-  password?: string;
+  gatewayToken?: string;
+  password?: string; // deprecated, use gatewayToken
   skills?: string[];
   stripeCustomerId?: string;
   subscriptionId?: string;

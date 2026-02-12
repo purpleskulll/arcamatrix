@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { sendWelcomeEmail } from "@/lib/email";
 import { createTask, findBySubscription } from "@/lib/tasks";
 
 // Force dynamic rendering - prevent static generation at build time
@@ -75,7 +74,7 @@ async function createProvisioningTask(data: {
   customerEmail: string;
   customerName: string;
   username: string;
-  password: string;
+  gatewayToken: string;
   skills: string[];
   stripeCustomerId: string;
   subscriptionId: string;
@@ -154,42 +153,27 @@ export async function POST(request: Request) {
       const stripeCustomerId = session.customer;
       const subscriptionId = session.subscription;
 
-      // Generate username and password
+      // Generate username and gateway token
       const username = generateUsername(customerEmail);
-      const password = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const gatewayToken = Array.from(crypto.getRandomValues(new Uint8Array(18)))
+        .map(b => b.toString(36).padStart(2, '0')).join('').substring(0, 24);
 
       console.log("Processing checkout.session.completed for:", customerEmail);
 
-      // Create provisioning task in blackboard
+      // Create provisioning task - email will be sent by provisioning agent after completion
       try {
         const taskId = await createProvisioningTask({
           customerEmail,
           customerName,
           username,
-          password,
+          gatewayToken,
           skills,
           stripeCustomerId,
           subscriptionId,
         });
 
-        console.log(`✅ Provisioning task created: ${taskId}`);
-
-        // Send welcome email with credentials (provisioning will happen async)
         const spriteUrl = `https://${username}.arcamatrix.com`;
-        const emailResult = await sendWelcomeEmail({
-          customerEmail,
-          customerName,
-          username,
-          password,
-          spriteUrl,
-          skills,
-        });
-
-        if (emailResult.success) {
-          console.log("Welcome email sent successfully");
-        } else {
-          console.error("Failed to send welcome email:", emailResult.error);
-        }
+        console.log(`Provisioning task created: ${taskId} - email will be sent after provisioning`);
 
         // Create Linear ticket for tracking
         const issueTitle = `[PROVISIONING] ${customerEmail} - Task ${taskId}`;
@@ -207,8 +191,7 @@ export async function POST(request: Request) {
 ### Selected Skills
 ${skills.map((s: string) => `- ${s}`).join("\n")}
 
-**Status:** PENDING (agent will provision automatically)
-**Welcome Email:** ${emailResult.success ? "✓ Sent" : "✗ Failed"}
+**Status:** PENDING (agent will provision and send welcome email)
         `.trim();
 
         await createLinearIssue(issueTitle, issueDescription, []);
