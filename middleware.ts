@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // Rewrite to customer's sprite - keeps URL in address bar, serves sprite content
+  // Redirect to customer's sprite
   const target = new URL(request.nextUrl.pathname + request.nextUrl.search, spriteUrl);
-  return NextResponse.rewrite(target);
+  return NextResponse.redirect(target);
 }
