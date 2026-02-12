@@ -491,12 +491,13 @@ function connect() {
   };
 }
 
-function rpcCall(method, params) {
+function rpcCall(method, params, timeoutMs) {
+  const timeout = timeoutMs || (method === 'skills.install' ? 120000 : 15000);
   return new Promise((resolve) => {
     const id = nextId();
     pendingCallbacks[id] = resolve;
     ws.send(JSON.stringify({ type: 'req', id, method, params }));
-    setTimeout(() => { if (pendingCallbacks[id]) { delete pendingCallbacks[id]; resolve({ ok: false }); } }, 15000);
+    setTimeout(() => { if (pendingCallbacks[id]) { delete pendingCallbacks[id]; resolve({ ok: false, error: { message: 'Request timed out' } }); } }, timeout);
   });
 }
 
@@ -690,18 +691,23 @@ function openSkillDetail(skillName) {
     html += `<div class="skill-detail-section"><h3>Setup</h3><p>${meta.setup}</p></div>`;
   }
 
-  // Show missing binaries info
-  if (missingBins.length > 0) {
-    html += `<div class="info-box" style="margin-top:16px"><p>This skill requires the following tools to be installed: <strong>${missingBins.join(', ')}</strong></p>
-    <p style="margin-top:8px">These may become available in a future update, or contact support for assistance.</p></div>`;
+  // Install button for skills with missing binaries that have install options
+  const installOptions = gwSkill.install || [];
+  if (missingBins.length > 0 && installOptions.length > 0) {
+    html += `<div class="skill-detail-section"><h3>Installation Required</h3>`;
+    html += `<p style="margin-bottom:12px">This skill needs <strong>${missingBins.join(', ')}</strong> to be installed.</p>`;
+    installOptions.forEach(opt => {
+      html += `<button class="btn-primary" style="margin-right:8px;margin-bottom:8px;padding:8px 18px;font-size:13px" onclick="installSkillDep('${skillName}', '${opt.id}')">${opt.label}</button>`;
+    });
+    html += '</div>';
+  } else if (missingBins.length > 0) {
+    html += `<div class="info-box" style="margin-top:16px"><p>This skill requires <strong>${missingBins.join(', ')}</strong> which cannot be automatically installed. Contact support for assistance.</p></div>`;
   }
 
-  // Credential inputs - show for skills that have required env vars
-  const envVarsToShow = missingEnv.length > 0 ? missingEnv : (reqEnv.length > 0 && !eligible ? reqEnv : []);
-  // Also show for eligible skills that HAVE env requirements (to allow changing keys)
+  // Credential inputs
   const allEnvVars = reqEnv.length > 0 ? reqEnv : missingEnv;
 
-  if (allEnvVars.length > 0 && missingBins.length === 0) {
+  if (allEnvVars.length > 0) {
     html += `<div class="skill-detail-section"><h3>Credentials</h3>`;
     allEnvVars.forEach(envVar => {
       const label = meta.envLabels?.[envVar] || envVar;
@@ -733,7 +739,7 @@ function openSkillDetail(skillName) {
   html += `<div id="detailStatus" class="modal-status"></div>`;
   html += '<div class="modal-actions">';
   html += '<button class="btn-secondary" onclick="closeSkillDetail()">Close</button>';
-  if (allEnvVars.length > 0 && missingBins.length === 0) {
+  if (allEnvVars.length > 0) {
     html += `<button class="btn-primary" onclick="saveDetailCreds('${skillName}')">Save &amp; Activate</button>`;
   }
   html += '</div>';
@@ -800,6 +806,33 @@ async function saveDetailCreds(skillName) {
     }
   } catch (err) {
     statusEl.textContent = 'Error: ' + (err.message || 'Failed to save');
+    statusEl.className = 'modal-status error';
+  }
+}
+
+// ===== Install Skill Dependencies via RPC =====
+async function installSkillDep(skillName, installId) {
+  const statusEl = document.getElementById('detailStatus');
+  statusEl.textContent = 'Installing... this may take a minute.';
+  statusEl.className = 'modal-status';
+
+  try {
+    const res = await rpcCall('skills.install', { name: skillName, installId });
+    if (res.ok && res.payload?.ok) {
+      statusEl.textContent = 'Installed successfully! ' + (res.payload.message || '');
+      statusEl.className = 'modal-status success';
+      // Refresh skill data
+      const skillsRes = await rpcCall('skills.status', {});
+      allSkillsData = skillsRes.payload?.skills || [];
+      // Re-open the detail to show updated status
+      setTimeout(() => openSkillDetail(skillName), 500);
+    } else {
+      const errMsg = res.payload?.stderr || res.payload?.message || res.error?.message || 'Installation failed';
+      statusEl.textContent = 'Failed: ' + errMsg;
+      statusEl.className = 'modal-status error';
+    }
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + (err.message || 'Installation failed');
     statusEl.className = 'modal-status error';
   }
 }
