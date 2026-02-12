@@ -328,75 +328,59 @@ const PROVIDER_PREFIXES = {
   xai: 'xai-'
 };
 
-// Curated skill catalog
-const SKILL_CATALOG = [
-  {
-    name: 'weather', label: 'Weather', emoji: '\u{1F324}\u{FE0F}',
-    desc: 'Get current weather conditions and forecasts for any location worldwide.',
-    setup: 'No configuration needed. This skill works out of the box.',
-    env: []
-  },
-  {
-    name: 'duckduckgo-search', label: 'Web Search', emoji: '\u{1F50D}',
-    desc: 'Search the web using DuckDuckGo. Get answers, find links, and research topics.',
-    setup: 'No configuration needed. This skill works out of the box.',
-    env: [], clawHub: true
-  },
-  {
-    name: 'github', label: 'GitHub', emoji: '\u{1F419}',
-    desc: 'Manage GitHub repositories, create issues, review pull requests, and more.',
-    setup: 'GitHub CLI is pre-configured. No additional setup required.',
-    env: []
-  },
-  {
-    name: 'trello', label: 'Trello', emoji: '\u{1F4CB}',
-    desc: 'Manage your Trello boards, lists, and cards. Create tasks, move cards, and organize projects.',
-    setup: 'You need a Trello API Key and Token. Visit the Trello Power-Up Admin to generate them.',
-    env: ['TRELLO_API_KEY', 'TRELLO_TOKEN'],
-    envLabels: { 'TRELLO_API_KEY': 'API Key', 'TRELLO_TOKEN': 'Token' },
-    envHints: { 'TRELLO_API_KEY': 'Starts with a long alphanumeric string', 'TRELLO_TOKEN': 'Generated alongside your API key' },
-    links: [{ label: 'Get Trello API Key', url: 'https://trello.com/power-ups/admin' }]
-  },
-  {
-    name: 'notion', label: 'Notion', emoji: '\u{1F4DD}',
-    desc: 'Create and manage Notion pages, databases, and content. Organize your knowledge base.',
-    setup: 'Create an internal integration in Notion to get your API key. Then share the pages you want accessible.',
-    env: ['NOTION_API_KEY'],
-    envLabels: { 'NOTION_API_KEY': 'Integration Token' },
-    envHints: { 'NOTION_API_KEY': 'Starts with ntn_ or secret_' },
-    links: [{ label: 'Create Notion Integration', url: 'https://www.notion.so/my-integrations' }]
-  },
-  {
-    name: 'slack', label: 'Slack', emoji: '\u{1F4AC}',
-    desc: 'Send messages, react to posts, and manage Slack channels directly from your assistant.',
-    setup: 'Requires Slack app configuration. Contact support for setup assistance.',
-    env: []
-  },
-  {
-    name: 'himalaya', label: 'Email (IMAP)', emoji: '\u{1F4E7}',
-    desc: 'Read, write, and manage emails via IMAP and SMTP protocols.',
-    setup: 'Requires himalaya CLI configuration with your email server details.',
-    env: []
-  },
-  {
-    name: 'summarize', label: 'Summarize', emoji: '\u{1F9FE}',
-    desc: 'Summarize web pages, documents, podcasts, and other content.',
-    setup: 'Requires the summarize CLI tool to be installed.',
-    env: []
-  },
-  {
-    name: 'gemini', label: 'Gemini CLI', emoji: '\u{264A}',
-    desc: 'One-shot questions and generation using Google Gemini models.',
-    setup: 'No configuration needed if Gemini is available on the system.',
-    env: []
-  },
-  {
-    name: 'coding-agent', label: 'Coding Agent', emoji: '\u{1F9E9}',
-    desc: 'Run specialized coding agents for programming, debugging, and code generation tasks.',
-    setup: 'No configuration needed. Uses the configured AI model.',
-    env: []
-  },
-];
+// Pretty metadata for known skills (label, emoji, setup instructions, links)
+const SKILL_META = {
+  'weather':            { label: 'Weather',           emoji: '\u{1F324}\u{FE0F}', setup: 'No configuration needed. Works out of the box.' },
+  'duckduckgo-search':  { label: 'Web Search',        emoji: '\u{1F50D}', setup: 'No configuration needed. Works out of the box.' },
+  'github':             { label: 'GitHub',             emoji: '\u{1F419}', setup: 'GitHub CLI is pre-configured. No additional setup required.' },
+  'coding-agent':       { label: 'Coding Agent',       emoji: '\u{1F9E9}', setup: 'No configuration needed. Uses the configured AI model.' },
+  'gemini':             { label: 'Gemini CLI',         emoji: '\u{264A}',  setup: 'No configuration needed if Gemini is available.' },
+  'notion':             { label: 'Notion',             emoji: '\u{1F4DD}', setup: 'Create an internal integration in Notion to get your API key, then share the pages you want accessible.', envLabels: { 'NOTION_API_KEY': 'Integration Token' }, envHints: { 'NOTION_API_KEY': 'Starts with ntn_ or secret_' }, links: [{ label: 'Create Notion Integration', url: 'https://www.notion.so/my-integrations' }] },
+  'trello':             { label: 'Trello',             emoji: '\u{1F4CB}', setup: 'You need a Trello API Key and Token from the Trello Power-Up Admin page.', envLabels: { 'TRELLO_API_KEY': 'API Key', 'TRELLO_TOKEN': 'Token' }, links: [{ label: 'Get Trello API Keys', url: 'https://trello.com/power-ups/admin' }] },
+  'slack':              { label: 'Slack',              emoji: '\u{1F4AC}', setup: 'Requires Slack app configuration. Contact support for setup assistance.' },
+  'himalaya':           { label: 'Email (IMAP)',       emoji: '\u{1F4E7}', setup: 'Requires himalaya CLI configured with your email server details.' },
+  'summarize':          { label: 'Summarize',          emoji: '\u{1F9FE}', setup: 'Requires the summarize CLI tool to be installed.' },
+  'tmux':               { label: 'Terminal Sessions',  emoji: '\u{1F5A5}\u{FE0F}', setup: 'No configuration needed. Uses tmux.' },
+  'healthcheck':        { label: 'Health Check',       emoji: '\u{1F6E1}\u{FE0F}', setup: 'System security and risk-tolerance configuration.' },
+  'skill-creator':      { label: 'Skill Creator',      emoji: '\u{1F6E0}\u{FE0F}', setup: 'Create or update custom AgentSkills.' },
+  'spotify-player':     { label: 'Spotify',            emoji: '\u{1F3B5}', setup: 'Requires Spotify player CLI (spogo) to be configured.' },
+  'openai-image-gen':   { label: 'Image Generation',   emoji: '\u{1F3A8}', setup: 'Requires an OpenAI API key for DALL-E image generation.', envLabels: { 'OPENAI_API_KEY': 'OpenAI API Key' }, links: [{ label: 'Get OpenAI Key', url: 'https://platform.openai.com/api-keys' }] },
+  'openai-whisper':     { label: 'Speech-to-Text (Local)', emoji: '\u{1F399}\u{FE0F}', setup: 'Requires the Whisper CLI installed locally.' },
+  'openai-whisper-api': { label: 'Speech-to-Text (API)', emoji: '\u{1F399}\u{FE0F}', setup: 'Requires an OpenAI API key.', envLabels: { 'OPENAI_API_KEY': 'OpenAI API Key' }, links: [{ label: 'Get OpenAI Key', url: 'https://platform.openai.com/api-keys' }] },
+  'nano-banana-pro':    { label: 'AI Image Edit',      emoji: '\u{1F5BC}\u{FE0F}', setup: 'Requires a Gemini API key.', envLabels: { 'GEMINI_API_KEY': 'Gemini API Key' }, links: [{ label: 'Get Gemini Key', url: 'https://aistudio.google.com/apikey' }] },
+  'nano-pdf':           { label: 'PDF Editor',         emoji: '\u{1F4C4}', setup: 'Requires the nano-pdf CLI.' },
+  'obsidian':           { label: 'Obsidian Notes',     emoji: '\u{1F4D3}', setup: 'Requires Obsidian CLI installed and a vault configured.' },
+  'gog':                { label: 'Google Workspace',   emoji: '\u{1F4E8}', setup: 'Google Workspace CLI for Gmail, Calendar, Drive, Contacts.' },
+  'voice-call':         { label: 'Voice Call',          emoji: '\u{1F4DE}', setup: 'Start voice calls via the OpenClaw voice-call plugin.' },
+  'wacli':              { label: 'WhatsApp',           emoji: '\u{1F4F1}', setup: 'Send and search WhatsApp messages via wacli.' },
+  'imsg':               { label: 'iMessage',           emoji: '\u{1F4AC}', setup: 'iMessage/SMS CLI for listing chats, history, and sending messages.' },
+  'bluebubbles':        { label: 'BlueBubbles (iMessage)', emoji: '\u{1F535}', setup: 'Requires BlueBubbles server for iMessage.' },
+  '1password':          { label: '1Password',          emoji: '\u{1F510}', setup: 'Requires 1Password CLI (op) installed.' },
+  'video-frames':       { label: 'Video Frames',       emoji: '\u{1F3AC}', setup: 'Extract frames from videos. Requires ffmpeg.' },
+  'session-logs':       { label: 'Session Logs',       emoji: '\u{1F4DC}', setup: 'Search and analyze your session logs. Requires ripgrep (rg).' },
+  'sag':                { label: 'Text-to-Speech',     emoji: '\u{1F50A}', setup: 'ElevenLabs text-to-speech. Requires API key.', envLabels: { 'ELEVENLABS_API_KEY': 'ElevenLabs API Key' }, links: [{ label: 'Get ElevenLabs Key', url: 'https://elevenlabs.io' }] },
+  'sonoscli':           { label: 'Sonos',              emoji: '\u{1F509}', setup: 'Control Sonos speakers. Requires sonos CLI.' },
+  'openhue':            { label: 'Philips Hue',        emoji: '\u{1F4A1}', setup: 'Control Philips Hue lights. Requires openhue CLI.' },
+  'apple-notes':        { label: 'Apple Notes',        emoji: '\u{1F34E}', setup: 'macOS only. Requires memo CLI.' },
+  'apple-reminders':    { label: 'Apple Reminders',    emoji: '\u{2705}',  setup: 'macOS only. Requires remindctl CLI.' },
+  'bear-notes':         { label: 'Bear Notes',         emoji: '\u{1F43B}', setup: 'Requires grizzly CLI for Bear notes.' },
+  'things-mac':         { label: 'Things 3',           emoji: '\u{2611}\u{FE0F}', setup: 'macOS only. Requires things CLI.' },
+  'clawhub':            { label: 'ClawHub',            emoji: '\u{1F4E6}', setup: 'Install community skills from ClawHub.' },
+  'oracle':             { label: 'Oracle CLI',         emoji: '\u{1F52E}', setup: 'Prompt + file bundling tool.' },
+  'goplaces':           { label: 'Google Places',      emoji: '\u{1F4CD}', setup: 'Requires a Google Places API key.', envLabels: { 'GOOGLE_PLACES_API_KEY': 'Google Places API Key' }, links: [{ label: 'Get API Key', url: 'https://console.cloud.google.com' }] },
+  'local-places':       { label: 'Local Places',       emoji: '\u{1F4CD}', setup: 'Requires Google Places API key and uv.', envLabels: { 'GOOGLE_PLACES_API_KEY': 'Google Places API Key' } },
+  'camsnap':            { label: 'Camera Capture',     emoji: '\u{1F4F7}', setup: 'Capture frames from RTSP/ONVIF cameras.' },
+  'peekaboo':           { label: 'Screen Capture',     emoji: '\u{1F440}', setup: 'macOS only. Capture and automate UI.' },
+  'blogwatcher':        { label: 'Blog Watcher',       emoji: '\u{1F4F0}', setup: 'Monitor blogs and RSS feeds.' },
+  'gifgrep':            { label: 'GIF Search',         emoji: '\u{1F609}', setup: 'Search GIF providers.' },
+  'blucli':             { label: 'BluOS Audio',        emoji: '\u{1F3B6}', setup: 'Control BluOS speakers.' },
+  'eightctl':           { label: 'Eight Sleep',        emoji: '\u{1F6CF}\u{FE0F}', setup: 'Control Eight Sleep pods.' },
+  'ordercli':           { label: 'Food Orders',        emoji: '\u{1F355}', setup: 'Check past Foodora orders.' },
+  'mcporter':           { label: 'MCP Tools',          emoji: '\u{1F527}', setup: 'Manage MCP server connections.' },
+  'model-usage':        { label: 'Model Usage Stats',  emoji: '\u{1F4CA}', setup: 'Track AI model usage costs.' },
+  'songsee':            { label: 'Audio Visualizer',   emoji: '\u{1F3BC}', setup: 'Generate spectrograms from audio files.' },
+  'sherpa-onnx-tts':    { label: 'Offline TTS',        emoji: '\u{1F50A}', setup: 'Local text-to-speech (no cloud).', envLabels: { 'SHERPA_ONNX_RUNTIME_DIR': 'Runtime Directory', 'SHERPA_ONNX_MODEL_DIR': 'Model Directory' } },
+};
 
 let allSkillsData = [];
 let configHash = '';
@@ -596,6 +580,14 @@ function handleKey(e) {
 }
 
 // ===== Skills Grid (Full Page) =====
+function getSkillMeta(name) {
+  const meta = SKILL_META[name];
+  if (meta) return meta;
+  // Auto-generate label from technical name
+  const label = name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return { label, emoji: '\u{1F4E6}', setup: '' };
+}
+
 async function loadSkillsGrid() {
   const grid = document.getElementById('skillsGrid');
   grid.innerHTML = '<div style="padding:40px;color:var(--text2);text-align:center;grid-column:1/-1">Loading skills...</div>';
@@ -609,35 +601,43 @@ async function loadSkillsGrid() {
 
     grid.innerHTML = '';
 
-    SKILL_CATALOG.forEach(catSkill => {
-      const gwSkill = allSkillsData.find(s => s.name === catSkill.name);
-      const eligible = gwSkill?.eligible || false;
-      const missingEnv = gwSkill?.missing?.env || [];
-      const missingBins = gwSkill?.missing?.bins || [];
-      const found = !!gwSkill;
+    // Sort: active first, then needs-creds, then unavailable
+    const sorted = [...allSkillsData].sort((a, b) => {
+      const score = (s) => {
+        if (s.eligible) return 0;
+        if ((s.missing?.env || []).length > 0 && (s.missing?.bins || []).length === 0) return 1;
+        return 2;
+      };
+      return score(a) - score(b) || a.name.localeCompare(b.name);
+    });
+
+    sorted.forEach(gwSkill => {
+      const meta = getSkillMeta(gwSkill.name);
+      const eligible = gwSkill.eligible || false;
+      const missingEnv = gwSkill.missing?.env || [];
+      const missingBins = gwSkill.missing?.bins || [];
+      const desc = gwSkill.description || '';
 
       let badgeText, badgeClass;
-      if (!found) {
-        badgeText = 'Not Installed'; badgeClass = 'not-installed';
-      } else if (eligible) {
+      if (eligible) {
         badgeText = 'Active'; badgeClass = 'active';
-      } else if (missingEnv.length > 0) {
+      } else if (missingEnv.length > 0 && missingBins.length === 0) {
         badgeText = 'Needs Credentials'; badgeClass = 'needs-creds';
       } else if (missingBins.length > 0) {
-        badgeText = 'Unavailable'; badgeClass = 'unavailable';
+        badgeText = 'Not Available'; badgeClass = 'unavailable';
       } else {
-        badgeText = 'Active'; badgeClass = 'active';
+        badgeText = 'Inactive'; badgeClass = 'not-installed';
       }
 
       const card = document.createElement('div');
       card.className = 'skill-card';
-      card.onclick = () => openSkillDetail(catSkill.name);
+      card.onclick = () => openSkillDetail(gwSkill.name);
       card.innerHTML = `
         <div class="skill-card-top">
-          <div class="skill-emoji">${catSkill.emoji}</div>
+          <div class="skill-emoji">${meta.emoji}</div>
           <div class="skill-card-info">
-            <div class="skill-card-name">${catSkill.label}</div>
-            <div class="skill-card-desc">${catSkill.desc}</div>
+            <div class="skill-card-name">${meta.label}</div>
+            <div class="skill-card-desc">${desc}</div>
           </div>
         </div>
         <span class="skill-card-badge ${badgeClass}">${badgeText}</span>`;
@@ -650,51 +650,63 @@ async function loadSkillsGrid() {
 
 // ===== Skill Detail Modal =====
 function openSkillDetail(skillName) {
-  const catSkill = SKILL_CATALOG.find(s => s.name === skillName);
-  if (!catSkill) return;
-
   const gwSkill = allSkillsData.find(s => s.name === skillName);
-  const eligible = gwSkill?.eligible || false;
-  const missingEnv = gwSkill?.missing?.env || [];
-  const found = !!gwSkill;
+  if (!gwSkill) return;
+
+  const meta = getSkillMeta(skillName);
+  const eligible = gwSkill.eligible || false;
+  const missingEnv = gwSkill.missing?.env || [];
+  const missingBins = gwSkill.missing?.bins || [];
+  const desc = gwSkill.description || '';
+  // Get required env vars from gateway data
+  const reqEnv = (gwSkill.requirements?.env || []).map(e => typeof e === 'string' ? e : (e.name || e));
 
   let statusHtml;
-  if (!found) {
-    statusHtml = '<span style="color:var(--text2)">Not Installed</span>';
-  } else if (eligible) {
+  if (eligible) {
     statusHtml = '<span style="color:var(--success)">Active</span>';
-  } else if (missingEnv.length > 0) {
+  } else if (missingEnv.length > 0 && missingBins.length === 0) {
     statusHtml = '<span style="color:var(--warning)">Needs Credentials</span>';
+  } else if (missingBins.length > 0) {
+    statusHtml = '<span style="color:var(--text2)">Not Available</span>';
   } else {
-    statusHtml = '<span style="color:var(--text2)">Unavailable</span>';
+    statusHtml = '<span style="color:var(--text2)">Inactive</span>';
   }
 
   let html = `
     <div class="skill-detail-header">
-      <div class="skill-detail-emoji">${catSkill.emoji}</div>
+      <div class="skill-detail-emoji">${meta.emoji}</div>
       <div class="skill-detail-title">
-        <h2>${catSkill.label}</h2>
+        <h2>${meta.label}</h2>
         <div class="skill-detail-status">${statusHtml}</div>
       </div>
     </div>
 
     <div class="skill-detail-section">
       <h3>About</h3>
-      <p>${catSkill.desc}</p>
-    </div>
-
-    <div class="skill-detail-section">
-      <h3>Setup</h3>
-      <p>${catSkill.setup}</p>
+      <p>${desc}</p>
     </div>`;
 
-  // Credential inputs
-  if (catSkill.env.length > 0) {
+  if (meta.setup) {
+    html += `<div class="skill-detail-section"><h3>Setup</h3><p>${meta.setup}</p></div>`;
+  }
+
+  // Show missing binaries info
+  if (missingBins.length > 0) {
+    html += `<div class="info-box" style="margin-top:16px"><p>This skill requires the following tools to be installed: <strong>${missingBins.join(', ')}</strong></p>
+    <p style="margin-top:8px">These may become available in a future update, or contact support for assistance.</p></div>`;
+  }
+
+  // Credential inputs - show for skills that have required env vars
+  const envVarsToShow = missingEnv.length > 0 ? missingEnv : (reqEnv.length > 0 && !eligible ? reqEnv : []);
+  // Also show for eligible skills that HAVE env requirements (to allow changing keys)
+  const allEnvVars = reqEnv.length > 0 ? reqEnv : missingEnv;
+
+  if (allEnvVars.length > 0 && missingBins.length === 0) {
     html += `<div class="skill-detail-section"><h3>Credentials</h3>`;
-    catSkill.env.forEach(envVar => {
-      const label = catSkill.envLabels?.[envVar] || envVar;
-      const hint = catSkill.envHints?.[envVar] || '';
-      const isConfigured = gwSkill && missingEnv.indexOf(envVar) === -1;
+    allEnvVars.forEach(envVar => {
+      const label = meta.envLabels?.[envVar] || envVar;
+      const hint = meta.envHints?.[envVar] || '';
+      const isConfigured = missingEnv.indexOf(envVar) === -1;
       html += `
         <div class="cred-input-group">
           <label>${label}</label>
@@ -706,27 +718,23 @@ function openSkillDetail(skillName) {
         </div>`;
     });
 
-    // Help links
-    if (catSkill.links && catSkill.links.length > 0) {
+    if (meta.links && meta.links.length > 0) {
       html += '<div class="help-links">';
-      catSkill.links.forEach(link => {
+      meta.links.forEach(link => {
         html += `<a href="${link.url}" target="_blank" class="help-link">${link.label} &rarr;</a>`;
       });
       html += '</div>';
     }
     html += '</div>';
-  } else if (!found) {
-    html += `<div class="info-box"><p>This skill is not yet installed on your instance. It may become available in a future update.</p></div>`;
   } else if (eligible) {
-    html += `<div class="info-box"><p>This skill is active and ready to use. Just ask your assistant to use it in a conversation.</p></div>`;
+    html += `<div class="info-box" style="margin-top:16px"><p>This skill is active and ready to use. Just ask your assistant to use it in a conversation.</p></div>`;
   }
 
-  // Status message + actions
   html += `<div id="detailStatus" class="modal-status"></div>`;
   html += '<div class="modal-actions">';
   html += '<button class="btn-secondary" onclick="closeSkillDetail()">Close</button>';
-  if (catSkill.env.length > 0) {
-    html += `<button class="btn-primary" onclick="saveDetailCreds('${catSkill.name}')">Save &amp; Activate</button>`;
+  if (allEnvVars.length > 0 && missingBins.length === 0) {
+    html += `<button class="btn-primary" onclick="saveDetailCreds('${skillName}')">Save &amp; Activate</button>`;
   }
   html += '</div>';
 
@@ -742,22 +750,25 @@ function closeSkillDetail() {
 }
 
 async function saveDetailCreds(skillName) {
-  const catSkill = SKILL_CATALOG.find(s => s.name === skillName);
-  if (!catSkill) return;
+  const gwSkill = allSkillsData.find(s => s.name === skillName);
+  if (!gwSkill) return;
+
+  const reqEnv = (gwSkill.requirements?.env || []).map(e => typeof e === 'string' ? e : (e.name || e));
+  const missingEnv = gwSkill.missing?.env || [];
+  const allEnvVars = reqEnv.length > 0 ? reqEnv : missingEnv;
 
   const statusEl = document.getElementById('detailStatus');
   statusEl.textContent = 'Saving...';
   statusEl.className = 'modal-status';
 
   try {
-    // Get fresh config + hash
     const configRes = await rpcCall('config.get', {});
     configHash = configRes.payload?.hash || '';
     const cfg = configRes.payload?.config || {};
     if (!cfg.env) cfg.env = {};
 
     let anySet = false;
-    for (const envVar of catSkill.env) {
+    for (const envVar of allEnvVars) {
       const input = document.getElementById(`detail-env-${envVar}`);
       const val = input?.value?.trim();
       if (val) {
@@ -777,12 +788,10 @@ async function saveDetailCreds(skillName) {
     if (res.ok) {
       statusEl.textContent = 'Credentials saved! The skill is now active.';
       statusEl.className = 'modal-status success';
-      // Clear inputs and update placeholders
-      for (const envVar of catSkill.env) {
+      for (const envVar of allEnvVars) {
         const input = document.getElementById(`detail-env-${envVar}`);
         if (input) { input.value = ''; input.placeholder = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022 (already configured)'; }
       }
-      // Refresh data
       const skillsRes = await rpcCall('skills.status', {});
       allSkillsData = skillsRes.payload?.skills || [];
     } else {
@@ -804,14 +813,14 @@ async function loadSidebarSkills() {
     const list = document.getElementById('sidebarSkills');
     list.innerHTML = '';
 
-    const activeSkills = skills.filter(s => s.eligible && SKILL_CATALOG.some(c => c.name === s.name));
+    const activeSkills = skills.filter(s => s.eligible);
 
     if (activeSkills.length > 0) {
       activeSkills.forEach(s => {
-        const cat = SKILL_CATALOG.find(c => c.name === s.name);
+        const meta = getSkillMeta(s.name);
         const el = document.createElement('div');
         el.className = 'mini-skill';
-        el.innerHTML = `<span class="dot"></span> ${cat?.emoji || ''} ${cat?.label || s.name}`;
+        el.innerHTML = `<span class="dot"></span> ${meta.emoji} ${meta.label}`;
         list.appendChild(el);
       });
     } else {
