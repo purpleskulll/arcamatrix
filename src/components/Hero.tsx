@@ -24,7 +24,7 @@ export default function Hero() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="pt-32 pb-20 px-4 relative overflow-hidden">
+    <section ref={sectionRef} className="pt-20 sm:pt-32 pb-16 sm:pb-20 px-4 relative overflow-hidden">
       <div className="max-w-7xl mx-auto text-center">
         {/* Glowing orb background effect */}
         <div className="absolute top-1/4 left-1/2 w-96 h-96 bg-arca-primary/20 rounded-full blur-3xl pointer-events-none hero-orb"></div>
@@ -68,7 +68,7 @@ export default function Hero() {
           </div>
 
           {/* Stats */}
-          <div className="mt-20 grid grid-cols-3 gap-8 max-w-3xl mx-auto scroll-fade">
+          <div className="mt-16 sm:mt-20 grid grid-cols-3 gap-4 sm:gap-8 max-w-3xl mx-auto scroll-fade">
             <div className="stat-animate delay-100">
               <div className="text-3xl font-bold text-arca-primary">50+</div>
               <div className="text-gray-400">Skills Available</div>

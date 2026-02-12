@@ -2,38 +2,42 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Arcamatrix AI Assistant</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0a0a1a;--surface:#12122a;--surface2:#1a1a3a;--border:#2a2a4a;--primary:#667eea;--primary2:#764ba2;--text:#e0e0f0;--text2:#8888aa;--success:#22c55e;--warning:#f59e0b;--error:#ef4444}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
-.app{display:flex;height:100vh}
+:root{--bg:#0a0a1a;--surface:#12122a;--surface2:#1a1a3a;--border:#2a2a4a;--primary:#667eea;--primary2:#764ba2;--text:#e0e0f0;--text2:#8888aa;--success:#22c55e;--warning:#f59e0b;--error:#ef4444;--sidebar-w:260px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);height:100vh;height:100dvh;overflow:hidden;-webkit-tap-highlight-color:transparent}
+.app{display:flex;height:100vh;height:100dvh}
 
 /* Login */
-.login-screen{display:flex;align-items:center;justify-content:center;height:100vh;width:100vw;background:linear-gradient(135deg,#667eea22,#764ba222)}
-.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:400px;text-align:center}
+.login-screen{display:flex;align-items:center;justify-content:center;height:100vh;height:100dvh;width:100vw;background:linear-gradient(135deg,#667eea22,#764ba222);padding:20px}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:400px;text-align:center}
 .login-box h1{font-size:28px;margin-bottom:8px;background:linear-gradient(135deg,var(--primary),var(--primary2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .login-box p{color:var(--text2);margin-bottom:24px;font-size:14px}
-.login-box input{width:100%;padding:14px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;margin-bottom:16px;outline:none}
+.login-box input{width:100%;padding:14px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;margin-bottom:16px;outline:none;-webkit-appearance:none}
 .login-box input:focus{border-color:var(--primary)}
-.login-box button{width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s}
+.login-box button{width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s;min-height:48px}
 .login-box button:hover{opacity:.9}
 .login-error{color:var(--error);font-size:13px;margin-top:8px;min-height:20px}
 
 /* Sidebar */
-.sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
-.sidebar-header{padding:20px;border-bottom:1px solid var(--border)}
+.sidebar{width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;z-index:50}
+.sidebar-header{padding:20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .sidebar-brand{font-size:20px;font-weight:700;background:linear-gradient(135deg,var(--primary),var(--primary2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.sidebar-customer{font-size:13px;color:var(--text2);margin-top:2px}
-.sidebar-status{font-size:12px;margin-top:6px;display:flex;align-items:center;gap:6px}
+.sidebar-close{display:none;background:none;border:none;color:var(--text2);font-size:24px;cursor:pointer;padding:4px 8px;line-height:1}
+.sidebar-customer{font-size:13px;color:var(--text2);margin-top:2px;padding:0 20px}
+.sidebar-status{font-size:12px;margin-top:6px;display:flex;align-items:center;gap:6px;padding:0 20px}
 .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .status-dot.online{background:var(--success)}
 .status-dot.offline{background:var(--error)}
 
 /* Sidebar nav */
 .sidebar-nav{padding:12px}
-.nav-btn{width:100%;padding:10px 14px;background:transparent;border:1px solid transparent;border-radius:8px;color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .15s;text-align:left;margin-bottom:4px}
+.nav-btn{width:100%;padding:12px 14px;background:transparent;border:1px solid transparent;border-radius:8px;color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .15s;text-align:left;margin-bottom:4px;min-height:44px}
 .nav-btn:hover{background:var(--surface2);color:var(--text)}
 .nav-btn.active{background:var(--surface2);color:var(--text);border-color:var(--border);font-weight:600}
 .nav-btn svg{flex-shrink:0}
@@ -44,20 +48,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .mini-skill{padding:8px 20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2)}
 .mini-skill .dot{width:6px;height:6px;border-radius:50%;background:var(--success);flex-shrink:0}
 
-.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)}
-.settings-btn{width:100%;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px}
-.settings-btn:hover{background:var(--border)}
+.sidebar-footer{margin-top:auto;padding:12px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.settings-btn,.logout-btn{width:100%;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px}
+.settings-btn:hover,.logout-btn:hover{background:var(--border)}
+.logout-btn{color:var(--error);border-color:transparent;background:transparent}
+.logout-btn:hover{background:rgba(239,68,68,.1)}
+
+/* Mobile header */
+.mobile-header{display:none;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);align-items:center;justify-content:space-between;flex-shrink:0;z-index:40}
+.mobile-header .sidebar-brand{font-size:18px}
+.hamburger{background:none;border:none;color:var(--text);font-size:24px;cursor:pointer;padding:4px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.mobile-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+
+/* Sidebar overlay for mobile */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:45}
 
 /* Main content area */
 .main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
 
 /* Chat view */
 .chat-view{flex:1;display:flex;flex-direction:column;min-height:0}
-.chat-header{padding:16px 24px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.chat-header{padding:12px 20px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .chat-title{font-size:16px;font-weight:600}
 .chat-session{font-size:12px;color:var(--text2)}
-.messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
-.msg{display:flex;gap:12px;max-width:85%}
+.messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px;-webkit-overflow-scrolling:touch}
+.msg{display:flex;gap:10px;max-width:90%}
 .msg.user{align-self:flex-end;flex-direction:row-reverse}
 .msg-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
 .msg.assistant .msg-avatar{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff}
@@ -70,54 +85,55 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .msg-bubble pre code{background:none;padding:0}
 
 /* Input */
-.input-area{padding:16px 24px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
-.input-row{display:flex;gap:12px}
-.input-row textarea{flex:1;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;resize:none;outline:none;min-height:44px;max-height:150px}
+.input-area{padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.input-row{display:flex;gap:10px}
+.input-row textarea{flex:1;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-family:inherit;resize:none;outline:none;min-height:44px;max-height:150px;-webkit-appearance:none}
 .input-row textarea:focus{border-color:var(--primary)}
-.send-btn{padding:12px 20px;background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;white-space:nowrap}
+.send-btn{padding:12px 20px;background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;white-space:nowrap;min-height:44px}
 .send-btn:hover{opacity:.9}
 .send-btn:disabled{opacity:.5;cursor:not-allowed}
-.input-hint{font-size:11px;color:var(--text2);margin-top:6px}
+.input-hint{font-size:11px;color:var(--text2);margin-top:4px}
 
 /* Welcome screen */
-.welcome{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:40px}
-.welcome h2{font-size:24px;margin-bottom:12px}
+.welcome{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
+.welcome h2{font-size:22px;margin-bottom:12px}
 .welcome p{color:var(--text2);max-width:450px;line-height:1.6;font-size:14px}
-.welcome .setup-hint{display:inline-block;margin-top:16px;padding:10px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--primary);font-size:13px;cursor:pointer}
+.welcome .setup-hint{display:inline-block;margin-top:16px;padding:12px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--primary);font-size:13px;cursor:pointer;min-height:44px;line-height:20px}
 .welcome .setup-hint:hover{border-color:var(--primary)}
 
 /* ===== Skills Full-Page View ===== */
 .skills-view{flex:1;display:flex;flex-direction:column;min-height:0}
-.skills-header{padding:24px 32px 0;flex-shrink:0}
+.skills-header{padding:20px 20px 0;flex-shrink:0}
 .skills-header h2{font-size:22px;font-weight:700;margin-bottom:4px}
-.skills-header p{color:var(--text2);font-size:14px;margin-bottom:20px}
-.skills-grid-wrap{flex:1;overflow-y:auto;padding:0 32px 32px}
-.skills-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.skills-header p{color:var(--text2);font-size:14px;margin-bottom:16px}
+.skills-grid-wrap{flex:1;overflow-y:auto;padding:0 20px 20px;-webkit-overflow-scrolling:touch}
+.skills-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
 
 /* Skill card in grid */
-.skill-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .2s;position:relative}
-.skill-card:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 8px 24px rgba(102,126,234,.15)}
-.skill-card-top{display:flex;align-items:flex-start;gap:14px;margin-bottom:12px}
-.skill-emoji{font-size:32px;line-height:1}
+.skill-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;transition:all .2s;position:relative;-webkit-tap-highlight-color:transparent}
+.skill-card:hover{border-color:var(--primary);box-shadow:0 8px 24px rgba(102,126,234,.15)}
+.skill-card:active{transform:scale(.98)}
+.skill-card-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.skill-emoji{font-size:28px;line-height:1}
 .skill-card-info{flex:1;min-width:0}
-.skill-card-name{font-size:16px;font-weight:700;margin-bottom:2px}
-.skill-card-desc{font-size:13px;color:var(--text2);line-height:1.5}
-.skill-card-badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;margin-top:8px}
+.skill-card-name{font-size:15px;font-weight:700;margin-bottom:2px}
+.skill-card-desc{font-size:12px;color:var(--text2);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.skill-card-badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;margin-top:6px}
 .skill-card-badge.active{background:var(--success);color:#fff}
 .skill-card-badge.needs-creds{background:var(--warning);color:#fff}
 .skill-card-badge.not-installed{background:var(--text2);color:#fff}
 .skill-card-badge.unavailable{background:var(--border);color:var(--text2)}
 
-/* ===== Skill Detail Modal ===== */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;width:520px;max-height:85vh;overflow-y:auto}
+/* ===== Modals ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:520px;max-height:90vh;max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .modal h2{font-size:20px;margin-bottom:4px;background:linear-gradient(135deg,var(--primary),var(--primary2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .modal .subtitle{color:var(--text2);font-size:13px;margin-bottom:20px}
 .modal label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px;margin-top:16px}
-.modal input,.modal select{width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none}
+.modal input,.modal select{width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:16px;outline:none;-webkit-appearance:none;min-height:44px}
 .modal input:focus,.modal select:focus{border-color:var(--primary)}
-.modal-actions{display:flex;gap:12px;margin-top:24px;justify-content:flex-end}
-.modal-actions button{padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;border:none}
+.modal-actions{display:flex;gap:10px;margin-top:24px;justify-content:flex-end;flex-wrap:wrap}
+.modal-actions button{padding:12px 20px;border-radius:8px;font-size:14px;cursor:pointer;border:none;min-height:44px}
 .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;font-weight:600}
 .btn-primary:hover{opacity:.9}
 .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border) !important}
@@ -127,21 +143,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .modal-status.error{color:var(--error)}
 
 /* Skill detail modal specifics */
-.skill-detail-header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
-.skill-detail-emoji{font-size:48px;line-height:1}
+.skill-detail-header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.skill-detail-emoji{font-size:42px;line-height:1}
 .skill-detail-title{flex:1}
-.skill-detail-title h2{font-size:22px;margin-bottom:2px}
+.skill-detail-title h2{font-size:20px;margin-bottom:2px}
 .skill-detail-title .skill-detail-status{font-size:13px}
-.skill-detail-section{margin-top:20px}
+.skill-detail-section{margin-top:18px}
 .skill-detail-section h3{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px}
 .skill-detail-section p{font-size:13px;color:var(--text2);line-height:1.6}
 .cred-input-group{margin-top:12px}
 .cred-input-group label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;letter-spacing:.3px}
-.cred-input-group input{width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none;font-family:monospace}
+.cred-input-group input{width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none;font-family:monospace;min-height:44px}
 .cred-input-group input:focus{border-color:var(--primary)}
 .cred-input-group .hint{font-size:11px;color:var(--text2);margin-top:4px}
 .help-links{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px}
-.help-link{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--primary);font-size:12px;text-decoration:none;transition:border-color .2s}
+.help-link{display:inline-flex;align-items:center;gap:4px;padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--primary);font-size:12px;text-decoration:none;transition:border-color .2s;min-height:36px}
 .help-link:hover{border-color:var(--primary)}
 .info-box{padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-top:12px}
 .info-box p{font-size:13px;color:var(--text2);line-height:1.5}
@@ -149,18 +165,47 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 /* API links in settings */
 .api-links{margin-top:16px;padding:14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)}
 .api-links h4{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
-.api-links a{display:block;color:var(--primary);text-decoration:none;font-size:13px;padding:4px 0}
+.api-links a{display:block;color:var(--primary);text-decoration:none;font-size:13px;padding:6px 0;min-height:32px;line-height:20px}
 .api-links a:hover{text-decoration:underline}
 
-/* Responsive */
+/* ===== Mobile Responsive ===== */
 @media(max-width:768px){
-  .sidebar{display:none}
-  .login-box{width:90%;padding:24px}
-  .modal{width:95%;padding:20px}
-  .skills-grid{grid-template-columns:1fr}
-  .skills-header{padding:20px 16px 0}
-  .skills-grid-wrap{padding:0 16px 16px}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:280px;transform:translateX(-100%);transition:transform .25s ease;z-index:50}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-close{display:block}
+  .sidebar-overlay.open{display:block}
+  .mobile-header{display:flex}
+  .chat-header{display:none}
+  .msg{max-width:95%}
+  .messages{padding:12px}
+  .input-area{padding:10px 12px}
+  .input-hint{display:none}
+  .skills-header{padding:16px 16px 0}
+  .skills-header h2{font-size:20px}
+  .skills-grid-wrap{padding:0 12px 12px}
+  .skills-grid{grid-template-columns:1fr;gap:10px}
+  .modal{margin:0;border-radius:12px;padding:20px;max-height:85vh;max-height:85dvh}
+  .skill-detail-emoji{font-size:36px}
+  .skill-detail-title h2{font-size:18px}
+  .modal-actions{flex-direction:column}
+  .modal-actions button{width:100%}
 }
+
+@media(max-width:380px){
+  .login-box{padding:24px 16px}
+  .login-box h1{font-size:24px}
+  .skills-grid{grid-template-columns:1fr}
+  .skill-card{padding:14px}
+  .msg-avatar{width:28px;height:28px;font-size:12px}
+}
+
+/* Safe area insets for notched phones */
+@supports(padding-bottom:env(safe-area-inset-bottom)){
+  .input-area{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+  .sidebar-footer{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  .login-screen{padding-bottom:env(safe-area-inset-bottom)}
+}
+
 .hidden{display:none !important}
 </style>
 </head>
@@ -179,24 +224,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 <!-- Main App -->
 <div id="mainApp" class="app hidden">
+
+  <!-- Mobile Header -->
+  <div class="mobile-header">
+    <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">&#9776;</button>
+    <div class="sidebar-brand">Arcamatrix</div>
+    <div class="mobile-status">
+      <span class="status-dot offline" id="mobileStatusDot"></span>
+    </div>
+  </div>
+
+  <!-- Sidebar Overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
   <!-- Sidebar -->
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-brand">Arcamatrix</div>
-      <div class="sidebar-customer" id="customerName"></div>
-      <div class="sidebar-status">
-        <span class="status-dot offline" id="statusDot"></span>
-        <span id="statusText" style="font-size:12px;color:var(--text2)">Disconnected</span>
-      </div>
+      <button class="sidebar-close" onclick="closeSidebar()" aria-label="Close menu">&times;</button>
+    </div>
+    <div class="sidebar-customer" id="customerName"></div>
+    <div class="sidebar-status">
+      <span class="status-dot offline" id="statusDot"></span>
+      <span id="statusText" style="font-size:12px;color:var(--text2)">Disconnected</span>
     </div>
 
     <!-- Navigation -->
     <div class="sidebar-nav">
-      <button class="nav-btn active" id="navChat" onclick="showView('chat')">
+      <button class="nav-btn active" id="navChat" onclick="showView('chat');closeSidebar()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         Chat
       </button>
-      <button class="nav-btn" id="navSkills" onclick="showView('skills')">
+      <button class="nav-btn" id="navSkills" onclick="showView('skills');closeSidebar()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
         Skills
       </button>
@@ -209,9 +268,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     </div>
 
     <div class="sidebar-footer">
-      <button class="settings-btn" onclick="openSettings()">
+      <button class="settings-btn" onclick="openSettings();closeSidebar()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
         Model &amp; API Key
+      </button>
+      <button class="logout-btn" onclick="doLogout()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        Logout
       </button>
     </div>
   </div>
@@ -226,7 +289,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
           <div class="chat-title">AI Assistant</div>
           <div class="chat-session" id="sessionInfo">Ready to chat</div>
         </div>
-        <button class="btn-secondary" style="padding:6px 14px;font-size:12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--surface2);color:var(--text)" onclick="newChat()">New Chat</button>
+        <button class="btn-secondary" style="padding:8px 14px;font-size:12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--surface2);color:var(--text);min-height:36px" onclick="newChat()">New Chat</button>
       </div>
       <div class="messages" id="messages">
         <div class="welcome" id="welcomeBlock">
@@ -250,7 +313,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="skills-view hidden" id="skillsView">
       <div class="skills-header">
         <h2>Skill Catalog</h2>
-        <p>Add capabilities to your AI assistant. Click on a skill to configure it.</p>
+        <p>Add capabilities to your AI assistant. Tap a skill to configure it.</p>
       </div>
       <div class="skills-grid-wrap">
         <div class="skills-grid" id="skillsGrid">
@@ -297,7 +360,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 <!-- Skill Detail Modal -->
 <div id="skillDetailModal" class="modal-overlay hidden" onclick="if(event.target===this)closeSkillDetail()">
-  <div class="modal" style="width:500px">
+  <div class="modal">
     <div id="skillDetailContent"></div>
   </div>
 </div>
@@ -328,7 +391,7 @@ const PROVIDER_PREFIXES = {
   xai: 'xai-'
 };
 
-// Pretty metadata for known skills (label, emoji, setup instructions, links)
+// Pretty metadata for known skills
 const SKILL_META = {
   'weather':            { label: 'Weather',           emoji: '\u{1F324}\u{FE0F}', setup: 'No configuration needed. Works out of the box.' },
   'duckduckgo-search':  { label: 'Web Search',        emoji: '\u{1F50D}', setup: 'No configuration needed. Works out of the box.' },
@@ -385,6 +448,16 @@ const SKILL_META = {
 let allSkillsData = [];
 let configHash = '';
 
+// ===== Mobile Sidebar =====
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
 // ===== View switching =====
 function showView(view) {
   currentView = view;
@@ -412,6 +485,18 @@ function doLogin() {
   if (!token) { document.getElementById('loginError').textContent = 'Please enter a token'; return; }
   document.getElementById('loginError').textContent = 'Connecting...';
   connect();
+}
+
+function doLogout() {
+  sessionStorage.removeItem('arcamatrix_token');
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  token = '';
+  document.getElementById('mainApp').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('tokenInput').value = '';
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('tokenInput').focus();
+  closeSidebar();
 }
 
 function connect() {
@@ -448,16 +533,17 @@ function connect() {
 
     if (data.type === 'res') {
       if (data.payload?.type === 'hello-ok') {
+        // Save token to sessionStorage (persists on reload, cleared on tab close)
+        sessionStorage.setItem('arcamatrix_token', token);
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('mainApp').classList.remove('hidden');
-        document.getElementById('statusDot').className = 'status-dot online';
-        document.getElementById('statusText').textContent = 'Connected';
-        document.getElementById('statusText').style.color = 'var(--success)';
+        setConnected(true);
         loadSidebarSkills();
         return;
       }
       if (data.ok === false && data.error) {
         document.getElementById('loginError').textContent = data.error.message || 'Connection failed';
+        sessionStorage.removeItem('arcamatrix_token');
         return;
       }
       if (pendingCallbacks[data.id]) {
@@ -480,15 +566,23 @@ function connect() {
   };
 
   ws.onclose = () => {
-    document.getElementById('statusDot').className = 'status-dot offline';
-    document.getElementById('statusText').textContent = 'Disconnected';
-    document.getElementById('statusText').style.color = 'var(--text2)';
+    setConnected(false);
     setTimeout(() => { if (token) connect(); }, 3000);
   };
 
   ws.onerror = () => {
     document.getElementById('loginError').textContent = 'Connection failed. Check your token.';
   };
+}
+
+function setConnected(online) {
+  const cls = online ? 'status-dot online' : 'status-dot offline';
+  const txt = online ? 'Connected' : 'Disconnected';
+  const clr = online ? 'var(--success)' : 'var(--text2)';
+  document.getElementById('statusDot').className = cls;
+  document.getElementById('statusText').textContent = txt;
+  document.getElementById('statusText').style.color = clr;
+  document.getElementById('mobileStatusDot').className = cls;
 }
 
 function rpcCall(method, params, timeoutMs) {
@@ -584,7 +678,6 @@ function handleKey(e) {
 function getSkillMeta(name) {
   const meta = SKILL_META[name];
   if (meta) return meta;
-  // Auto-generate label from technical name
   const label = name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   return { label, emoji: '\u{1F4E6}', setup: '' };
 }
@@ -602,7 +695,6 @@ async function loadSkillsGrid() {
 
     grid.innerHTML = '';
 
-    // Sort: active first, then needs-creds, then unavailable
     const sorted = [...allSkillsData].sort((a, b) => {
       const score = (s) => {
         if (s.eligible) return 0;
@@ -659,7 +751,6 @@ function openSkillDetail(skillName) {
   const missingEnv = gwSkill.missing?.env || [];
   const missingBins = gwSkill.missing?.bins || [];
   const desc = gwSkill.description || '';
-  // Get required env vars from gateway data
   const reqEnv = (gwSkill.requirements?.env || []).map(e => typeof e === 'string' ? e : (e.name || e));
 
   let statusHtml;
@@ -691,20 +782,18 @@ function openSkillDetail(skillName) {
     html += `<div class="skill-detail-section"><h3>Setup</h3><p>${meta.setup}</p></div>`;
   }
 
-  // Install button for skills with missing binaries that have install options
   const installOptions = gwSkill.install || [];
   if (missingBins.length > 0 && installOptions.length > 0) {
     html += `<div class="skill-detail-section"><h3>Installation Required</h3>`;
     html += `<p style="margin-bottom:12px">This skill needs <strong>${missingBins.join(', ')}</strong> to be installed.</p>`;
     installOptions.forEach(opt => {
-      html += `<button class="btn-primary" style="margin-right:8px;margin-bottom:8px;padding:8px 18px;font-size:13px" onclick="installSkillDep('${skillName}', '${opt.id}')">${opt.label}</button>`;
+      html += `<button class="btn-primary" style="margin-right:8px;margin-bottom:8px;padding:10px 18px;font-size:13px;min-height:44px" onclick="installSkillDep('${skillName}', '${opt.id}')">${opt.label}</button>`;
     });
     html += '</div>';
   } else if (missingBins.length > 0) {
     html += `<div class="info-box" style="margin-top:16px"><p>This skill requires <strong>${missingBins.join(', ')}</strong> which cannot be automatically installed. Contact support for assistance.</p></div>`;
   }
 
-  // Credential inputs
   const allEnvVars = reqEnv.length > 0 ? reqEnv : missingEnv;
 
   if (allEnvVars.length > 0) {
@@ -750,7 +839,6 @@ function openSkillDetail(skillName) {
 
 function closeSkillDetail() {
   document.getElementById('skillDetailModal').classList.add('hidden');
-  // Refresh the grid to show updated status
   loadSkillsGrid();
   loadSidebarSkills();
 }
@@ -821,10 +909,8 @@ async function installSkillDep(skillName, installId) {
     if (res.ok && res.payload?.ok) {
       statusEl.textContent = 'Installed successfully! ' + (res.payload.message || '');
       statusEl.className = 'modal-status success';
-      // Refresh skill data
       const skillsRes = await rpcCall('skills.status', {});
       allSkillsData = skillsRes.payload?.skills || [];
-      // Re-open the detail to show updated status
       setTimeout(() => openSkillDetail(skillName), 500);
     } else {
       const errMsg = res.payload?.stderr || res.payload?.message || res.error?.message || 'Installation failed';
@@ -924,9 +1010,27 @@ loadConfig().then(() => {
   if (appConfig?.customerName) {
     document.getElementById('customerName').textContent = appConfig.customerName;
   }
+
+  // Check sessionStorage for existing token (persists on page reload)
+  const savedToken = sessionStorage.getItem('arcamatrix_token');
+  if (savedToken) {
+    token = savedToken;
+    document.getElementById('loginError').textContent = 'Reconnecting...';
+    connect();
+  } else {
+    document.getElementById('tokenInput').focus();
+  }
 });
-document.getElementById('tokenInput').focus();
+
 document.getElementById('tokenInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// Prevent iOS zoom on input focus
+document.querySelectorAll('input, textarea, select').forEach(el => {
+  el.addEventListener('focus', () => {
+    document.querySelector('meta[name="viewport"]').setAttribute('content',
+      'width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no');
+  });
+});
 </script>
 </body>
 </html>
