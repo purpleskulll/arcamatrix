@@ -4,49 +4,30 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
-const BASE_PRICE_CENTS = 1900;
+const BASE_PRICE_CENTS = 700; // $7/month base subscription
 
-// Inline skill validation and prices to avoid import issues
-const SKILLS_BY_ID: Record<string, { price: number }> = {
-  // Messaging & Communication
-  whatsapp: { price: 5 }, telegram: { price: 5 }, discord: { price: 5 },
-  slack: { price: 5 }, email: { price: 5 }, imessage: { price: 7 },
-  signal: { price: 5 },
-
+// All skills are included free with the base subscription
+const VALID_SKILL_IDS = new Set([
+  // Communication
+  "whatsapp", "telegram", "discord", "slack", "email", "imessage", "signal",
   // Productivity & Notes
-  notion: { price: 4 }, obsidian: { price: 4 }, trello: { price: 3 },
-  "apple-notes": { price: 3 }, "apple-reminders": { price: 3 },
-  "bear-notes": { price: 4 }, "things": { price: 4 },
-
+  "calendar", "notion", "obsidian", "trello", "github",
+  "apple-notes", "apple-reminders", "bear-notes", "things",
   // Development
-  github: { price: 5 }, "coding-agent": { price: 8 },
-
+  "coding-agent",
   // Media & Entertainment
-  spotify: { price: 3 }, youtube: { price: 3 },
-
+  "spotify", "youtube",
   // Smart Home
-  hue: { price: 3 }, homekit: { price: 4 },
-
+  "hue", "homekit",
   // Utilities
-  weather: { price: 2 }, "web-search": { price: 3 }, voice: { price: 8 },
-  calendar: { price: 3 }, "1password": { price: 5 },
-
+  "weather", "web-search", "voice", "1password",
   // AI & Advanced
-  canvas: { price: 6 }, gemini: { price: 6 }, summarize: { price: 4 },
-  "video-frames": { price: 5 }, "image-gen": { price: 5 }
-};
+  "canvas", "gemini", "summarize", "video-frames", "image-gen",
+]);
 
 function validateSkillIds(skillIds: string[]): { valid: boolean; invalid: string[] } {
-  const invalid = skillIds.filter(id => !SKILLS_BY_ID[id]);
+  const invalid = skillIds.filter(id => !VALID_SKILL_IDS.has(id));
   return { valid: invalid.length === 0, invalid };
-}
-
-function getSkillPricesInCents(): Record<string, number> {
-  const prices: Record<string, number> = {};
-  for (const [id, skill] of Object.entries(SKILLS_BY_ID)) {
-    prices[id] = skill.price * 100;
-  }
-  return prices;
 }
 
 export async function POST(request: Request) {
@@ -63,10 +44,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid skill IDs" }, { status: 400 });
     }
 
-    const skillPrices = getSkillPricesInCents();
-    const skillsTotal = skills.reduce((sum: number, id: string) => sum + (skillPrices[id] || 0), 0);
-    const total = BASE_PRICE_CENTS + skillsTotal;
-
     const successUrl = "https://arcamatrix.com/success?session_id={CHECKOUT_SESSION_ID}";
     const cancelUrl = "https://arcamatrix.com/";
 
@@ -74,13 +51,14 @@ export async function POST(request: Request) {
       mode: "subscription",
       success_url: successUrl,
       cancel_url: cancelUrl,
-      "line_items[0][price_data][currency]": "eur",
+      "line_items[0][price_data][currency]": "usd",
       "line_items[0][price_data][product_data][name]": "Arcamatrix AI Assistant",
-      "line_items[0][price_data][product_data][description]": `Base + ${skills.length} skills`,
-      "line_items[0][price_data][unit_amount]": total.toString(),
+      "line_items[0][price_data][product_data][description]": `All-inclusive plan with ${skills.length} skills`,
+      "line_items[0][price_data][unit_amount]": BASE_PRICE_CENTS.toString(),
       "line_items[0][price_data][recurring][interval]": "month",
       "line_items[0][quantity]": "1",
       "billing_address_collection": "required",
+      "allow_promotion_codes": "true",
       "metadata[skills]": JSON.stringify(skills),
     });
 

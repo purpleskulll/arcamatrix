@@ -4,40 +4,39 @@ interface Skill {
   id: string;
   name: string;
   description: string;
-  price: number;
   category: string;
   icon: string;
 }
 
 const skills: Skill[] = [
   // Communication
-  { id: "whatsapp", name: "WhatsApp", description: "Send and receive WhatsApp messages", price: 5, category: "Communication", icon: "💬" },
-  { id: "telegram", name: "Telegram", description: "Full Telegram bot integration", price: 5, category: "Communication", icon: "✈️" },
-  { id: "discord", name: "Discord", description: "Manage Discord servers and DMs", price: 5, category: "Communication", icon: "🎮" },
-  { id: "slack", name: "Slack", description: "Workspace messaging and automation", price: 5, category: "Communication", icon: "💼" },
-  { id: "email", name: "Email (Gmail)", description: "Read, send, and organize emails", price: 5, category: "Communication", icon: "📧" },
-  { id: "imessage", name: "iMessage", description: "Send messages via iMessage", price: 7, category: "Communication", icon: "🍎" },
-  { id: "signal", name: "Signal", description: "Secure Signal messaging", price: 5, category: "Communication", icon: "🔐" },
+  { id: "whatsapp", name: "WhatsApp", description: "Send and receive messages, manage chats, and automate responses through WhatsApp", category: "Communication", icon: "💬" },
+  { id: "telegram", name: "Telegram", description: "Full bot integration - send messages, manage groups, handle files and media", category: "Communication", icon: "✈️" },
+  { id: "discord", name: "Discord", description: "Manage servers, send messages, moderate channels, and automate Discord workflows", category: "Communication", icon: "🎮" },
+  { id: "slack", name: "Slack", description: "Read and send messages, manage channels, search workspace history, and automate workflows", category: "Communication", icon: "💼" },
+  { id: "email", name: "Email", description: "Read, compose, and organize emails across Gmail and other IMAP providers", category: "Communication", icon: "📧" },
+  { id: "imessage", name: "iMessage", description: "Send and receive iMessages directly from your AI assistant", category: "Communication", icon: "🍎" },
+  { id: "signal", name: "Signal", description: "Private and encrypted messaging through Signal", category: "Communication", icon: "🔐" },
 
   // Productivity
-  { id: "calendar", name: "Calendar", description: "Manage events and scheduling", price: 3, category: "Productivity", icon: "📅" },
-  { id: "notion", name: "Notion", description: "Read and write Notion pages", price: 4, category: "Productivity", icon: "📝" },
-  { id: "obsidian", name: "Obsidian", description: "Manage your knowledge vault", price: 4, category: "Productivity", icon: "🗃️" },
-  { id: "trello", name: "Trello", description: "Board and card management", price: 3, category: "Productivity", icon: "📋" },
-  { id: "github", name: "GitHub", description: "Repos, issues, PRs, and more", price: 5, category: "Productivity", icon: "🐙" },
+  { id: "calendar", name: "Calendar", description: "Create events, check your schedule, set reminders, and manage multiple calendars", category: "Productivity", icon: "📅" },
+  { id: "notion", name: "Notion", description: "Create and edit pages, query databases, manage your workspace, and organize knowledge", category: "Productivity", icon: "📝" },
+  { id: "obsidian", name: "Obsidian", description: "Read and write notes, search your vault, manage tags, and navigate linked knowledge", category: "Productivity", icon: "🗃️" },
+  { id: "trello", name: "Trello", description: "Create boards, manage cards, move tasks between lists, and track project progress", category: "Productivity", icon: "📋" },
+  { id: "github", name: "GitHub", description: "Browse repos, create issues, review PRs, manage branches, and automate dev workflows", category: "Development", icon: "🐙" },
 
   // Media & Entertainment
-  { id: "spotify", name: "Spotify", description: "Control playback and playlists", price: 3, category: "Media", icon: "🎵" },
-  { id: "youtube", name: "YouTube", description: "Search and summarize videos", price: 3, category: "Media", icon: "📺" },
+  { id: "spotify", name: "Spotify", description: "Control playback, search songs, manage playlists, and discover new music", category: "Media", icon: "🎵" },
+  { id: "youtube", name: "YouTube", description: "Search videos, get transcripts, summarize content, and manage playlists", category: "Media", icon: "📺" },
 
   // Smart Home
-  { id: "hue", name: "Philips Hue", description: "Control your smart lights", price: 3, category: "Smart Home", icon: "💡" },
-  { id: "homekit", name: "HomeKit", description: "Apple Home automation", price: 4, category: "Smart Home", icon: "🏠" },
+  { id: "hue", name: "Philips Hue", description: "Control lights, set scenes, adjust brightness and colors, and create automations", category: "Smart Home", icon: "💡" },
+  { id: "homekit", name: "HomeKit", description: "Control Apple Home devices, check sensor status, and trigger automations", category: "Smart Home", icon: "🏠" },
 
   // Utilities
-  { id: "weather", name: "Weather", description: "Forecasts and alerts", price: 2, category: "Utilities", icon: "🌤️" },
-  { id: "web-search", name: "Web Search", description: "Search and summarize the web", price: 3, category: "Utilities", icon: "🔍" },
-  { id: "voice", name: "Voice Calls", description: "Make and receive voice calls", price: 8, category: "Utilities", icon: "📞" },
+  { id: "weather", name: "Weather", description: "Get current conditions, hourly and weekly forecasts, and severe weather alerts for any location", category: "Utilities", icon: "🌤️" },
+  { id: "web-search", name: "Web Search", description: "Search the internet, get up-to-date information, and summarize web pages", category: "Utilities", icon: "🔍" },
+  { id: "voice", name: "Voice Calls", description: "Make and receive voice calls, handle voicemail, and manage call routing", category: "Utilities", icon: "📞" },
 ];
 
 const categories = Array.from(new Set(skills.map(s => s.category)));
@@ -58,6 +57,11 @@ export default function SkillSelector({ selectedSkills, onSkillsChange }: Props)
 
   return (
     <div className="space-y-8">
+      <div className="text-center mb-2">
+        <span className="inline-block px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-sm font-medium">
+          All skills included free with your subscription
+        </span>
+      </div>
       {categories.map(category => (
         <div key={category}>
           <h3 className="text-lg font-semibold text-gray-300 mb-4">{category}</h3>
@@ -79,19 +83,17 @@ export default function SkillSelector({ selectedSkills, onSkillsChange }: Props)
                       <span className="text-2xl">{skill.icon}</span>
                       <div>
                         <div className="font-semibold">{skill.name}</div>
-                        <div className="text-sm text-gray-400">{skill.description}</div>
+                        <div className="text-sm text-gray-400 mt-0.5">{skill.description}</div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-arca-primary font-semibold">${skill.price}</span>
-                      <span className="text-gray-500 text-sm">/mo</span>
+                    <div className="flex-shrink-0 ml-2">
+                      {selectedSkills.includes(skill.id) ? (
+                        <span className="text-xs font-medium text-arca-primary">&#10003; Added</span>
+                      ) : (
+                        <span className="text-xs text-green-400/70">Free</span>
+                      )}
                     </div>
                   </div>
-                  {selectedSkills.includes(skill.id) && (
-                    <div className="mt-2 flex justify-end">
-                      <span className="text-xs text-arca-primary">✓ Selected</span>
-                    </div>
-                  )}
                 </button>
               ))}
           </div>
