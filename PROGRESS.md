@@ -1,7 +1,7 @@
 # Arcamatrix - Progress & Handoff Notes
 
 > Last updated: 2026-02-12
-> Status: **In Progress** - Core platform functional, skill catalog UI just rebuilt
+> Status: **In Progress** - Provisioning pipeline improved, mobile UI fixed
 
 ---
 
@@ -27,13 +27,14 @@
 - WebSocket goes directly to sprite (Vercel doesn't support WS proxy)
 - `config.json` on each sprite has `gatewayUrl` for direct WS connection
 
-### 4. Customer UI (IN PROGRESS - just rebuilt)
+### 4. Customer UI (DONE)
 - Single HTML file served by OpenClaw Gateway
 - **Login**: Token-based authentication via WebSocket RPC
 - **Chat**: Full streaming chat with AI (works end-to-end)
 - **Settings**: AI provider + API key configuration (Anthropic, OpenAI, Google, OpenRouter, xAI)
-- **Skill Catalog**: Just rebuilt as full-page view (was a broken modal before)
-- **Skill Detail Modal**: Per-skill configuration popup with credential inputs
+- **Skill Catalog**: Full-page view with responsive card grid and detail modals
+- **Mobile UI**: Fully responsive - hidden sidebar with hamburger menu, large touch-friendly inputs
+- **Session persistence**: Token stored in sessionStorage, auto-reconnect
 
 ### 5. OpenClaw Gateway RPC (VERIFIED)
 All these RPC methods have been tested and work:
@@ -48,44 +49,33 @@ All these RPC methods have been tested and work:
 
 ## What Was Just Done (Latest Session)
 
-### Skill Catalog UI Rebuild
-The old skill catalog was a popup modal that couldn't scroll and was unusable. It was rebuilt as:
+### Provisioning Pipeline Improvements
+1. **provision_customer.sh** now:
+   - Generates `config.json` with `gatewayUrl` and `customerName` for direct WebSocket
+   - Sets `allowedOrigins` in OpenClaw gateway config for CORS
+   - Configures env var placeholders for selected skills (users set actual keys in UI)
+2. **provisioning_agent.py** now:
+   - Auto-updates `middleware.ts` with new customer mappings via git commit+push
+   - Triggers Vercel auto-deploy for permanent subdomain routing
+   - Removes mappings on customer recycle/cancellation
+3. **UI template on orchestrator** updated to latest version (53KB with mobile fixes)
 
-1. **Full-page Skills view** - Separate view alongside Chat, switchable via sidebar navigation buttons
-2. **Skills grid** - Responsive card grid showing all 10 curated skills with status badges (Active / Needs Credentials / Not Installed / Unavailable)
-3. **Skill Detail Modal** - Click a skill card to open a configuration modal with:
-   - About section (description)
-   - Setup instructions
-   - Credential input fields (e.g., `TRELLO_API_KEY`, `NOTION_API_KEY`)
-   - Hints per field
-   - Links to get API keys (e.g., "Create Notion Integration")
-   - "Save & Activate" button that saves via `config.set` RPC
-4. **Sidebar redesign** - Navigation (Chat/Skills), active skills summary with green dots
-5. **File deployed to**: `arca-customer-001:/home/sprite/custom-ui/index.html` and `swarm-orchestrator:/home/sprite/arcamatrix-ui.html`
+### Mobile UI Overhaul
+- Sidebar hidden by default on mobile, slide-in animation via `transform:translateX`
+- Hamburger menu button in mobile header
+- Chat input: 48px min-height, 16px font for touch usability
+- Fully responsive layout with `flex-direction:column` on mobile
 
-### Key Fix: Gateway Service Recreation
-- Had issues with phantom `arcamatrix` service blocking HTTP port
-- Resolved by timing service deletions and using correct `--args` format (comma-separated)
-- Gateway now running: `openclaw gateway run --port 8080 --bind lan --token customer-001-token`
+### Subdomain Routing Fixed
+- Middleware moved from project root to `src/middleware.ts` (Next.js `src` directory requirement)
+- `NextResponse.rewrite()` keeps branded URL in browser while serving sprite content
+- Vercel `requireVerifiedCommits` disabled for auto-deploy from provisioning agent
 
 ---
 
 ## What Still Needs Work
 
-### Priority 1: Test the New Skill Catalog UI
-- The rebuilt UI was just uploaded but NOT yet tested by the user in the browser
-- Need to verify: full-page skills view loads, skill cards are clickable, detail modal opens, credential inputs work, save actually persists and skill becomes active
-- Known concern: the previous modal couldn't scroll - need to confirm the full-page view fixes this
-
-### Priority 2: Provision Script Improvements
-- `provision_customer.sh` is basic - it doesn't yet:
-  - Install skills selected at checkout (the case statement for skill installation was discussed but may not be in the deployed version)
-  - Generate `config.json` with `gatewayUrl` for each customer
-  - Set `gateway.controlUi.allowedOrigins` for cross-origin WebSocket
-  - These were added in an earlier version but the currently deployed script may be the simpler one
-- Need to verify the script on swarm-orchestrator matches what's needed
-
-### Priority 3: End-to-End Provisioning Test
+### Priority 1: End-to-End Provisioning Test
 - Create a real test purchase through Stripe checkout
 - Verify the full flow: payment -> task created -> agent provisions -> email sent -> customer can log in and use
 
