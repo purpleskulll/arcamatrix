@@ -1,0 +1,10 @@
+{
+  "customerName": "Justus Theile",
+  "gatewayUrl": "https://arca-customer-001-bl4yi.sprites.app",
+  "skills": [
+    {"id": "weather", "name": "Weather", "icon": "🌤️", "description": "Get current weather and forecasts"},
+    {"id": "github", "name": "GitHub", "icon": "🐙", "description": "Interact with GitHub repos, issues, and PRs"},
+    {"id": "duckduckgo-search", "name": "Web Search", "icon": "🔍", "description": "Search the web using DuckDuckGo"}
+  ],
+  "branding": {"name": "Arcamatrix", "tagline": "Your Personal AI Assistant"}
+}

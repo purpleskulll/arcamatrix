@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcamatrix AI Assistant</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a1a;--surface:#12122a;--surface2:#1a1a3a;--border:#2a2a4a;--primary:#667eea;--primary2:#764ba2;--text:#e0e0f0;--text2:#8888aa;--success:#22c55e;--warning:#f59e0b;--error:#ef4444}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+.app{display:flex;height:100vh}
+
+/* Login */
+.login-screen{display:flex;align-items:center;justify-content:center;height:100vh;width:100vw;background:linear-gradient(135deg,#667eea22,#764ba222)}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:400px;text-align:center}
+.login-box h1{font-size:28px;margin-bottom:8px;background:linear-gradient(135deg,var(--primary),var(--primary2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login-box p{color:var(--text2);margin-bottom:24px;font-size:14px}
+.login-box input{width:100%;padding:14px 18px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;margin-bottom:16px;outline:none}
+.login-box input:focus{border-color:var(--primary)}
+.login-box button{width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s}
+.login-box button:hover{opacity:.9}
+.login-error{color:var(--error);font-size:13px;margin-top:8px;min-height:20px}
+
+/* Sidebar */
+.sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-header{padding:20px;border-bottom:1px solid var(--border)}
+.sidebar-brand{font-size:20px;font-weight:700;background:linear-gradient(135deg,var(--primary),var(--primary2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sidebar-customer{font-size:13px;color:var(--text2);margin-top:2px}
+.sidebar-status{font-size:12px;margin-top:6px;display:flex;align-items:center;gap:6px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.status-dot.online{background:var(--success)}
+.status-dot.offline{background:var(--error)}
+
+/* Sidebar nav */
+.sidebar-nav{padding:12px}
+.nav-btn{width:100%;padding:10px 14px;background:transparent;border:1px solid transparent;border-radius:8px;color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .15s;text-align:left;margin-bottom:4px}
+.nav-btn:hover{background:var(--surface2);color:var(--text)}
+.nav-btn.active{background:var(--surface2);color:var(--text);border-color:var(--border);font-weight:600}
+.nav-btn svg{flex-shrink:0}
+
+/* Sidebar skills summary */
+.sidebar-section{padding:12px 20px 6px;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.sidebar-skills{flex:1;overflow-y:auto;padding-bottom:12px}
+.mini-skill{padding:8px 20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text2)}
+.mini-skill .dot{width:6px;height:6px;border-radius:50%;background:var(--success);flex-shrink:0}
+
+.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)}
+.settings-btn{width:100%;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.settings-btn:hover{background:var(--border)}
+
+/* Main content area */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+
+/* Chat view */
+.chat-view{flex:1;display:flex;flex-direction:column;min-height:0}
+.chat-header{padding:16px 24px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.chat-title{font-size:16px;font-weight:600}
+.chat-session{font-size:12px;color:var(--text2)}
+.messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+.msg{display:flex;gap:12px;max-width:85%}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.msg-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.msg.assistant .msg-avatar{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff}
+.msg.user .msg-avatar{background:var(--surface2);color:var(--text2)}
+.msg-bubble{padding:12px 16px;border-radius:12px;line-height:1.6;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.msg.assistant .msg-bubble{background:var(--surface2);border:1px solid var(--border)}
+.msg.user .msg-bubble{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff}
+.msg-bubble code{background:rgba(255,255,255,.1);padding:2px 6px;border-radius:4px;font-size:13px}
+.msg-bubble pre{background:rgba(0,0,0,.3);padding:12px;border-radius:8px;overflow-x:auto;margin:8px 0}
+.msg-bubble pre code{background:none;padding:0}
+
+/* Input */
+.input-area{padding:16px 24px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.input-row{display:flex;gap:12px}
+.input-row textarea{flex:1;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;resize:none;outline:none;min-height:44px;max-height:150px}
+.input-row textarea:focus{border-color:var(--primary)}
+.send-btn{padding:12px 20px;background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;white-space:nowrap}
+.send-btn:hover{opacity:.9}
+.send-btn:disabled{opacity:.5;cursor:not-allowed}
+.input-hint{font-size:11px;color:var(--text2);margin-top:6px}
+
+/* Welcome screen */
+.welcome{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:40px}
+.welcome h2{font-size:24px;margin-bottom:12px}
+.welcome p{color:var(--text2);max-width:450px;line-height:1.6;font-size:14px}
+.welcome .setup-hint{display:inline-block;margin-top:16px;padding:10px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--primary);font-size:13px;cursor:pointer}
+.welcome .setup-hint:hover{border-color:var(--primary)}
+
+/* ===== Skills Full-Page View ===== */
+.skills-view{flex:1;display:flex;flex-direction:column;min-height:0}
+.skills-header{padding:24px 32px 0;flex-shrink:0}
+.skills-header h2{font-size:22px;font-weight:700;margin-bottom:4px}
+.skills-header p{color:var(--text2);font-size:14px;margin-bottom:20px}
+.skills-grid-wrap{flex:1;overflow-y:auto;padding:0 32px 32px}
+.skills-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+
+/* Skill card in grid */
+.skill-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .2s;position:relative}
+.skill-card:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 8px 24px rgba(102,126,234,.15)}
+.skill-card-top{display:flex;align-items:flex-start;gap:14px;margin-bottom:12px}
+.skill-emoji{font-size:32px;line-height:1}
+.skill-card-info{flex:1;min-width:0}
+.skill-card-name{font-size:16px;font-weight:700;margin-bottom:2px}
+.skill-card-desc{font-size:13px;color:var(--text2);line-height:1.5}
+.skill-card-badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;margin-top:8px}
+.skill-card-badge.active{background:var(--success);color:#fff}
+.skill-card-badge.needs-creds{background:var(--warning);color:#fff}
+.skill-card-badge.not-installed{background:var(--text2);color:#fff}
+.skill-card-badge.unavailable{background:var(--border);color:var(--text2)}
+
+/* ===== Skill Detail Modal ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;width:520px;max-height:85vh;overflow-y:auto}
+.modal h2{font-size:20px;margin-bottom:4px;background:linear-gradient(135deg,var(--primary),var(--primary2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.modal .subtitle{color:var(--text2);font-size:13px;margin-bottom:20px}
+.modal label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px;margin-top:16px}
+.modal input,.modal select{width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none}
+.modal input:focus,.modal select:focus{border-color:var(--primary)}
+.modal-actions{display:flex;gap:12px;margin-top:24px;justify-content:flex-end}
+.modal-actions button{padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;border:none}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary2));color:#fff;font-weight:600}
+.btn-primary:hover{opacity:.9}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border) !important}
+.btn-secondary:hover{background:var(--border)}
+.modal-status{font-size:13px;margin-top:12px;min-height:20px}
+.modal-status.success{color:var(--success)}
+.modal-status.error{color:var(--error)}
+
+/* Skill detail modal specifics */
+.skill-detail-header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.skill-detail-emoji{font-size:48px;line-height:1}
+.skill-detail-title{flex:1}
+.skill-detail-title h2{font-size:22px;margin-bottom:2px}
+.skill-detail-title .skill-detail-status{font-size:13px}
+.skill-detail-section{margin-top:20px}
+.skill-detail-section h3{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.skill-detail-section p{font-size:13px;color:var(--text2);line-height:1.6}
+.cred-input-group{margin-top:12px}
+.cred-input-group label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;letter-spacing:.3px}
+.cred-input-group input{width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none;font-family:monospace}
+.cred-input-group input:focus{border-color:var(--primary)}
+.cred-input-group .hint{font-size:11px;color:var(--text2);margin-top:4px}
+.help-links{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px}
+.help-link{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--primary);font-size:12px;text-decoration:none;transition:border-color .2s}
+.help-link:hover{border-color:var(--primary)}
+.info-box{padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-top:12px}
+.info-box p{font-size:13px;color:var(--text2);line-height:1.5}
+
+/* API links in settings */
+.api-links{margin-top:16px;padding:14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)}
+.api-links h4{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.api-links a{display:block;color:var(--primary);text-decoration:none;font-size:13px;padding:4px 0}
+.api-links a:hover{text-decoration:underline}
+
+/* Responsive */
+@media(max-width:768px){
+  .sidebar{display:none}
+  .login-box{width:90%;padding:24px}
+  .modal{width:95%;padding:20px}
+  .skills-grid{grid-template-columns:1fr}
+  .skills-header{padding:20px 16px 0}
+  .skills-grid-wrap{padding:0 16px 16px}
+}
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-box">
+    <h1>Arcamatrix</h1>
+    <p>Enter your gateway token to connect to your AI assistant</p>
+    <input type="password" id="tokenInput" placeholder="Gateway token" autocomplete="off">
+    <button onclick="doLogin()">Connect</button>
+    <div id="loginError" class="login-error"></div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="mainApp" class="app hidden">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">Arcamatrix</div>
+      <div class="sidebar-customer" id="customerName"></div>
+      <div class="sidebar-status">
+        <span class="status-dot offline" id="statusDot"></span>
+        <span id="statusText" style="font-size:12px;color:var(--text2)">Disconnected</span>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="sidebar-nav">
+      <button class="nav-btn active" id="navChat" onclick="showView('chat')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Chat
+      </button>
+      <button class="nav-btn" id="navSkills" onclick="showView('skills')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Skills
+      </button>
+    </div>
+
+    <!-- Active skills summary -->
+    <div class="sidebar-section">Active Skills</div>
+    <div class="sidebar-skills" id="sidebarSkills">
+      <div class="mini-skill" style="color:var(--text2);font-style:italic;padding-left:20px">Loading...</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="settings-btn" onclick="openSettings()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        Model &amp; API Key
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="main">
+
+    <!-- Chat View -->
+    <div class="chat-view" id="chatView">
+      <div class="chat-header">
+        <div>
+          <div class="chat-title">AI Assistant</div>
+          <div class="chat-session" id="sessionInfo">Ready to chat</div>
+        </div>
+        <button class="btn-secondary" style="padding:6px 14px;font-size:12px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--surface2);color:var(--text)" onclick="newChat()">New Chat</button>
+      </div>
+      <div class="messages" id="messages">
+        <div class="welcome" id="welcomeBlock">
+          <div>
+            <h2>Welcome!</h2>
+            <p>Your personal AI assistant is ready. Configure your AI model and API key in Settings, then type a message below.</p>
+            <div class="setup-hint" onclick="openSettings()">Open Settings to configure your AI provider</div>
+          </div>
+        </div>
+      </div>
+      <div class="input-area">
+        <div class="input-row">
+          <textarea id="chatInput" placeholder="Type your message..." rows="1" onkeydown="handleKey(event)"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+        </div>
+        <div class="input-hint">Press Enter to send, Shift+Enter for new line</div>
+      </div>
+    </div>
+
+    <!-- Skills View (full page) -->
+    <div class="skills-view hidden" id="skillsView">
+      <div class="skills-header">
+        <h2>Skill Catalog</h2>
+        <p>Add capabilities to your AI assistant. Click on a skill to configure it.</p>
+      </div>
+      <div class="skills-grid-wrap">
+        <div class="skills-grid" id="skillsGrid">
+          <div style="padding:40px;color:var(--text2);text-align:center;grid-column:1/-1">Loading skills...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal-overlay hidden" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <h2>Model &amp; API Key Settings</h2>
+    <p class="subtitle">Connect your own AI provider to power your assistant</p>
+    <label>AI Provider</label>
+    <select id="providerSelect" onchange="onProviderChange()">
+      <option value="anthropic">Anthropic (Claude) - Recommended</option>
+      <option value="openai">OpenAI (GPT)</option>
+      <option value="google">Google (Gemini)</option>
+      <option value="openrouter">OpenRouter (Multiple Models)</option>
+      <option value="xai">xAI (Grok)</option>
+    </select>
+    <label>API Key</label>
+    <input type="password" id="apiKeyInput" placeholder="Enter your API key">
+    <label>Model</label>
+    <input type="text" id="modelInput" placeholder="e.g. claude-sonnet-4-5-20250929">
+    <div class="api-links">
+      <h4>Get Your API Key</h4>
+      <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic (Claude) &rarr; console.anthropic.com</a>
+      <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI (GPT) &rarr; platform.openai.com</a>
+      <a href="https://aistudio.google.com/apikey" target="_blank">Google (Gemini) &rarr; aistudio.google.com</a>
+      <a href="https://openrouter.ai/keys" target="_blank">OpenRouter &rarr; openrouter.ai</a>
+      <a href="https://console.x.ai" target="_blank">xAI (Grok) &rarr; console.x.ai</a>
+    </div>
+    <div id="settingsStatus" class="modal-status"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeSettings()">Cancel</button>
+      <button class="btn-primary" onclick="saveSettings()">Save &amp; Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Skill Detail Modal -->
+<div id="skillDetailModal" class="modal-overlay hidden" onclick="if(event.target===this)closeSkillDetail()">
+  <div class="modal" style="width:500px">
+    <div id="skillDetailContent"></div>
+  </div>
+</div>
+
+<script>
+let ws = null;
+let token = '';
+let msgIdCounter = 0;
+let pendingCallbacks = {};
+let isStreaming = false;
+let appConfig = null;
+let currentView = 'chat';
+const SESSION_KEY = 'agent:main:web:dm:arcamatrix';
+
+const PROVIDER_MODELS = {
+  anthropic: 'claude-sonnet-4-5-20250929',
+  openai: 'gpt-4o',
+  google: 'gemini-2.5-flash',
+  openrouter: 'anthropic/claude-sonnet-4-5-20250929',
+  xai: 'grok-3'
+};
+
+const PROVIDER_PREFIXES = {
+  anthropic: 'sk-ant-',
+  openai: 'sk-',
+  google: 'AI',
+  openrouter: 'sk-or-',
+  xai: 'xai-'
+};
+
+// Curated skill catalog
+const SKILL_CATALOG = [
+  {
+    name: 'weather', label: 'Weather', emoji: '\u{1F324}\u{FE0F}',
+    desc: 'Get current weather conditions and forecasts for any location worldwide.',
+    setup: 'No configuration needed. This skill works out of the box.',
+    env: []
+  },
+  {
+    name: 'duckduckgo-search', label: 'Web Search', emoji: '\u{1F50D}',
+    desc: 'Search the web using DuckDuckGo. Get answers, find links, and research topics.',
+    setup: 'No configuration needed. This skill works out of the box.',
+    env: [], clawHub: true
+  },
+  {
+    name: 'github', label: 'GitHub', emoji: '\u{1F419}',
+    desc: 'Manage GitHub repositories, create issues, review pull requests, and more.',
+    setup: 'GitHub CLI is pre-configured. No additional setup required.',
+    env: []
+  },
+  {
+    name: 'trello', label: 'Trello', emoji: '\u{1F4CB}',
+    desc: 'Manage your Trello boards, lists, and cards. Create tasks, move cards, and organize projects.',
+    setup: 'You need a Trello API Key and Token. Visit the Trello Power-Up Admin to generate them.',
+    env: ['TRELLO_API_KEY', 'TRELLO_TOKEN'],
+    envLabels: { 'TRELLO_API_KEY': 'API Key', 'TRELLO_TOKEN': 'Token' },
+    envHints: { 'TRELLO_API_KEY': 'Starts with a long alphanumeric string', 'TRELLO_TOKEN': 'Generated alongside your API key' },
+    links: [{ label: 'Get Trello API Key', url: 'https://trello.com/power-ups/admin' }]
+  },
+  {
+    name: 'notion', label: 'Notion', emoji: '\u{1F4DD}',
+    desc: 'Create and manage Notion pages, databases, and content. Organize your knowledge base.',
+    setup: 'Create an internal integration in Notion to get your API key. Then share the pages you want accessible.',
+    env: ['NOTION_API_KEY'],
+    envLabels: { 'NOTION_API_KEY': 'Integration Token' },
+    envHints: { 'NOTION_API_KEY': 'Starts with ntn_ or secret_' },
+    links: [{ label: 'Create Notion Integration', url: 'https://www.notion.so/my-integrations' }]
+  },
+  {
+    name: 'slack', label: 'Slack', emoji: '\u{1F4AC}',
+    desc: 'Send messages, react to posts, and manage Slack channels directly from your assistant.',
+    setup: 'Requires Slack app configuration. Contact support for setup assistance.',
+    env: []
+  },
+  {
+    name: 'himalaya', label: 'Email (IMAP)', emoji: '\u{1F4E7}',
+    desc: 'Read, write, and manage emails via IMAP and SMTP protocols.',
+    setup: 'Requires himalaya CLI configuration with your email server details.',
+    env: []
+  },
+  {
+    name: 'summarize', label: 'Summarize', emoji: '\u{1F9FE}',
+    desc: 'Summarize web pages, documents, podcasts, and other content.',
+    setup: 'Requires the summarize CLI tool to be installed.',
+    env: []
+  },
+  {
+    name: 'gemini', label: 'Gemini CLI', emoji: '\u{264A}',
+    desc: 'One-shot questions and generation using Google Gemini models.',
+    setup: 'No configuration needed if Gemini is available on the system.',
+    env: []
+  },
+  {
+    name: 'coding-agent', label: 'Coding Agent', emoji: '\u{1F9E9}',
+    desc: 'Run specialized coding agents for programming, debugging, and code generation tasks.',
+    setup: 'No configuration needed. Uses the configured AI model.',
+    env: []
+  },
+];
+
+let allSkillsData = [];
+let configHash = '';
+
+// ===== View switching =====
+function showView(view) {
+  currentView = view;
+  document.getElementById('chatView').classList.toggle('hidden', view !== 'chat');
+  document.getElementById('skillsView').classList.toggle('hidden', view !== 'skills');
+  document.getElementById('navChat').classList.toggle('active', view === 'chat');
+  document.getElementById('navSkills').classList.toggle('active', view === 'skills');
+  if (view === 'skills') loadSkillsGrid();
+  if (view === 'chat') document.getElementById('chatInput').focus();
+}
+
+// ===== Config =====
+async function loadConfig() {
+  try {
+    const res = await fetch('/config.json');
+    if (res.ok) appConfig = await res.json();
+  } catch (e) {}
+}
+
+// ===== Connection =====
+function nextId() { return 'msg-' + (++msgIdCounter); }
+
+function doLogin() {
+  token = document.getElementById('tokenInput').value.trim();
+  if (!token) { document.getElementById('loginError').textContent = 'Please enter a token'; return; }
+  document.getElementById('loginError').textContent = 'Connecting...';
+  connect();
+}
+
+function connect() {
+  let wsUrl;
+  if (appConfig && appConfig.gatewayUrl) {
+    const gw = appConfig.gatewayUrl.replace(/\/$/, '');
+    wsUrl = gw.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:') + '/';
+  } else {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    wsUrl = `${proto}//${location.host}/`;
+  }
+  ws = new WebSocket(wsUrl);
+  ws.onopen = () => {};
+  ws.onmessage = (ev) => {
+    let data;
+    try { data = JSON.parse(ev.data); } catch { return; }
+
+    if (data.type === 'event' && data.event === 'connect.challenge') {
+      ws.send(JSON.stringify({
+        type: 'req', id: nextId(), method: 'connect',
+        params: {
+          minProtocol: 3, maxProtocol: 3,
+          client: { id: 'openclaw-control-ui', version: '1.0.0', platform: 'web', mode: 'webchat' },
+          role: 'operator',
+          scopes: ['operator.admin', 'operator.approvals', 'operator.pairing'],
+          caps: [], commands: [], permissions: {},
+          auth: { token },
+          locale: navigator.language || 'en-US',
+          userAgent: 'arcamatrix-web/1.0'
+        }
+      }));
+      return;
+    }
+
+    if (data.type === 'res') {
+      if (data.payload?.type === 'hello-ok') {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        document.getElementById('statusDot').className = 'status-dot online';
+        document.getElementById('statusText').textContent = 'Connected';
+        document.getElementById('statusText').style.color = 'var(--success)';
+        loadSidebarSkills();
+        return;
+      }
+      if (data.ok === false && data.error) {
+        document.getElementById('loginError').textContent = data.error.message || 'Connection failed';
+        return;
+      }
+      if (pendingCallbacks[data.id]) {
+        pendingCallbacks[data.id](data);
+        delete pendingCallbacks[data.id];
+      }
+      return;
+    }
+
+    if (data.type === 'event' && data.event === 'chat') {
+      const p = data.payload;
+      if (p.state === 'delta' && p.message?.content?.[0]?.text) {
+        updateStreamingMessage(p.message.content[0].text);
+      } else if (p.state === 'final') {
+        finalizeStreamingMessage(p.message?.content?.[0]?.text);
+      } else if (p.state === 'error') {
+        finalizeStreamingMessage(p.errorMessage || 'An error occurred. Please check your API key in Settings.', true);
+      }
+    }
+  };
+
+  ws.onclose = () => {
+    document.getElementById('statusDot').className = 'status-dot offline';
+    document.getElementById('statusText').textContent = 'Disconnected';
+    document.getElementById('statusText').style.color = 'var(--text2)';
+    setTimeout(() => { if (token) connect(); }, 3000);
+  };
+
+  ws.onerror = () => {
+    document.getElementById('loginError').textContent = 'Connection failed. Check your token.';
+  };
+}
+
+function rpcCall(method, params) {
+  return new Promise((resolve) => {
+    const id = nextId();
+    pendingCallbacks[id] = resolve;
+    ws.send(JSON.stringify({ type: 'req', id, method, params }));
+    setTimeout(() => { if (pendingCallbacks[id]) { delete pendingCallbacks[id]; resolve({ ok: false }); } }, 15000);
+  });
+}
+
+// ===== Chat =====
+function addMessage(role, text) {
+  const w = document.getElementById('welcomeBlock');
+  if (w) w.remove();
+  const container = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = `<div class="msg-avatar">${role === 'user' ? 'You' : 'AI'}</div><div class="msg-bubble">${escapeHtml(text)}</div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+let streamDiv = null;
+function updateStreamingMessage(text) {
+  if (!streamDiv) {
+    const w = document.getElementById('welcomeBlock');
+    if (w) w.remove();
+    streamDiv = document.createElement('div');
+    streamDiv.className = 'msg assistant';
+    streamDiv.innerHTML = '<div class="msg-avatar">AI</div><div class="msg-bubble"></div>';
+    document.getElementById('messages').appendChild(streamDiv);
+  }
+  streamDiv.querySelector('.msg-bubble').textContent = text;
+  document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+}
+
+function finalizeStreamingMessage(text, isError) {
+  if (text && streamDiv) {
+    const bubble = streamDiv.querySelector('.msg-bubble');
+    bubble.textContent = text;
+    if (isError) bubble.style.color = 'var(--error)';
+  } else if (text) {
+    addMessage('assistant', text);
+  }
+  streamDiv = null;
+  isStreaming = false;
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('chatInput').focus();
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || isStreaming) return;
+  input.value = '';
+  input.style.height = 'auto';
+  addMessage('user', text);
+  isStreaming = true;
+  document.getElementById('sendBtn').disabled = true;
+  ws.send(JSON.stringify({
+    type: 'req', id: nextId(), method: 'chat.send',
+    params: { message: text, sessionKey: SESSION_KEY, idempotencyKey: nextId() }
+  }));
+}
+
+function newChat() {
+  document.getElementById('messages').innerHTML = `
+    <div class="welcome" id="welcomeBlock">
+      <div>
+        <h2>New Conversation</h2>
+        <p>Start a fresh conversation with your AI assistant.</p>
+      </div>
+    </div>`;
+  streamDiv = null;
+  isStreaming = false;
+  document.getElementById('sendBtn').disabled = false;
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  const ta = e.target;
+  setTimeout(() => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 150) + 'px'; }, 0);
+}
+
+// ===== Skills Grid (Full Page) =====
+async function loadSkillsGrid() {
+  const grid = document.getElementById('skillsGrid');
+  grid.innerHTML = '<div style="padding:40px;color:var(--text2);text-align:center;grid-column:1/-1">Loading skills...</div>';
+
+  try {
+    const skillsRes = await rpcCall('skills.status', {});
+    allSkillsData = skillsRes.payload?.skills || [];
+
+    const configRes = await rpcCall('config.get', {});
+    configHash = configRes.payload?.hash || '';
+
+    grid.innerHTML = '';
+
+    SKILL_CATALOG.forEach(catSkill => {
+      const gwSkill = allSkillsData.find(s => s.name === catSkill.name);
+      const eligible = gwSkill?.eligible || false;
+      const missingEnv = gwSkill?.missing?.env || [];
+      const missingBins = gwSkill?.missing?.bins || [];
+      const found = !!gwSkill;
+
+      let badgeText, badgeClass;
+      if (!found) {
+        badgeText = 'Not Installed'; badgeClass = 'not-installed';
+      } else if (eligible) {
+        badgeText = 'Active'; badgeClass = 'active';
+      } else if (missingEnv.length > 0) {
+        badgeText = 'Needs Credentials'; badgeClass = 'needs-creds';
+      } else if (missingBins.length > 0) {
+        badgeText = 'Unavailable'; badgeClass = 'unavailable';
+      } else {
+        badgeText = 'Active'; badgeClass = 'active';
+      }
+
+      const card = document.createElement('div');
+      card.className = 'skill-card';
+      card.onclick = () => openSkillDetail(catSkill.name);
+      card.innerHTML = `
+        <div class="skill-card-top">
+          <div class="skill-emoji">${catSkill.emoji}</div>
+          <div class="skill-card-info">
+            <div class="skill-card-name">${catSkill.label}</div>
+            <div class="skill-card-desc">${catSkill.desc}</div>
+          </div>
+        </div>
+        <span class="skill-card-badge ${badgeClass}">${badgeText}</span>`;
+      grid.appendChild(card);
+    });
+  } catch (err) {
+    grid.innerHTML = `<div style="padding:40px;color:var(--error);text-align:center;grid-column:1/-1">Failed to load skills: ${err.message || 'Connection error'}</div>`;
+  }
+}
+
+// ===== Skill Detail Modal =====
+function openSkillDetail(skillName) {
+  const catSkill = SKILL_CATALOG.find(s => s.name === skillName);
+  if (!catSkill) return;
+
+  const gwSkill = allSkillsData.find(s => s.name === skillName);
+  const eligible = gwSkill?.eligible || false;
+  const missingEnv = gwSkill?.missing?.env || [];
+  const found = !!gwSkill;
+
+  let statusHtml;
+  if (!found) {
+    statusHtml = '<span style="color:var(--text2)">Not Installed</span>';
+  } else if (eligible) {
+    statusHtml = '<span style="color:var(--success)">Active</span>';
+  } else if (missingEnv.length > 0) {
+    statusHtml = '<span style="color:var(--warning)">Needs Credentials</span>';
+  } else {
+    statusHtml = '<span style="color:var(--text2)">Unavailable</span>';
+  }
+
+  let html = `
+    <div class="skill-detail-header">
+      <div class="skill-detail-emoji">${catSkill.emoji}</div>
+      <div class="skill-detail-title">
+        <h2>${catSkill.label}</h2>
+        <div class="skill-detail-status">${statusHtml}</div>
+      </div>
+    </div>
+
+    <div class="skill-detail-section">
+      <h3>About</h3>
+      <p>${catSkill.desc}</p>
+    </div>
+
+    <div class="skill-detail-section">
+      <h3>Setup</h3>
+      <p>${catSkill.setup}</p>
+    </div>`;
+
+  // Credential inputs
+  if (catSkill.env.length > 0) {
+    html += `<div class="skill-detail-section"><h3>Credentials</h3>`;
+    catSkill.env.forEach(envVar => {
+      const label = catSkill.envLabels?.[envVar] || envVar;
+      const hint = catSkill.envHints?.[envVar] || '';
+      const isConfigured = gwSkill && missingEnv.indexOf(envVar) === -1;
+      html += `
+        <div class="cred-input-group">
+          <label>${label}</label>
+          <input type="password"
+            id="detail-env-${envVar}"
+            placeholder="${isConfigured ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022 (already configured)' : 'Enter your ' + label}"
+            data-env="${envVar}">
+          ${hint ? `<div class="hint">${hint}</div>` : ''}
+        </div>`;
+    });
+
+    // Help links
+    if (catSkill.links && catSkill.links.length > 0) {
+      html += '<div class="help-links">';
+      catSkill.links.forEach(link => {
+        html += `<a href="${link.url}" target="_blank" class="help-link">${link.label} &rarr;</a>`;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  } else if (!found) {
+    html += `<div class="info-box"><p>This skill is not yet installed on your instance. It may become available in a future update.</p></div>`;
+  } else if (eligible) {
+    html += `<div class="info-box"><p>This skill is active and ready to use. Just ask your assistant to use it in a conversation.</p></div>`;
+  }
+
+  // Status message + actions
+  html += `<div id="detailStatus" class="modal-status"></div>`;
+  html += '<div class="modal-actions">';
+  html += '<button class="btn-secondary" onclick="closeSkillDetail()">Close</button>';
+  if (catSkill.env.length > 0) {
+    html += `<button class="btn-primary" onclick="saveDetailCreds('${catSkill.name}')">Save &amp; Activate</button>`;
+  }
+  html += '</div>';
+
+  document.getElementById('skillDetailContent').innerHTML = html;
+  document.getElementById('skillDetailModal').classList.remove('hidden');
+}
+
+function closeSkillDetail() {
+  document.getElementById('skillDetailModal').classList.add('hidden');
+  // Refresh the grid to show updated status
+  loadSkillsGrid();
+  loadSidebarSkills();
+}
+
+async function saveDetailCreds(skillName) {
+  const catSkill = SKILL_CATALOG.find(s => s.name === skillName);
+  if (!catSkill) return;
+
+  const statusEl = document.getElementById('detailStatus');
+  statusEl.textContent = 'Saving...';
+  statusEl.className = 'modal-status';
+
+  try {
+    // Get fresh config + hash
+    const configRes = await rpcCall('config.get', {});
+    configHash = configRes.payload?.hash || '';
+    const cfg = configRes.payload?.config || {};
+    if (!cfg.env) cfg.env = {};
+
+    let anySet = false;
+    for (const envVar of catSkill.env) {
+      const input = document.getElementById(`detail-env-${envVar}`);
+      const val = input?.value?.trim();
+      if (val) {
+        cfg.env[envVar] = val;
+        anySet = true;
+      }
+    }
+
+    if (!anySet) {
+      statusEl.textContent = 'Please enter at least one credential.';
+      statusEl.className = 'modal-status error';
+      return;
+    }
+
+    const res = await rpcCall('config.set', { raw: JSON.stringify(cfg), baseHash: configHash });
+
+    if (res.ok) {
+      statusEl.textContent = 'Credentials saved! The skill is now active.';
+      statusEl.className = 'modal-status success';
+      // Clear inputs and update placeholders
+      for (const envVar of catSkill.env) {
+        const input = document.getElementById(`detail-env-${envVar}`);
+        if (input) { input.value = ''; input.placeholder = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022 (already configured)'; }
+      }
+      // Refresh data
+      const skillsRes = await rpcCall('skills.status', {});
+      allSkillsData = skillsRes.payload?.skills || [];
+    } else {
+      statusEl.textContent = res.error?.message || 'Failed to save credentials.';
+      statusEl.className = 'modal-status error';
+    }
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + (err.message || 'Failed to save');
+    statusEl.className = 'modal-status error';
+  }
+}
+
+// ===== Sidebar Skills =====
+async function loadSidebarSkills() {
+  try {
+    const res = await rpcCall('skills.status', {});
+    const skills = res.payload?.skills || [];
+    allSkillsData = skills;
+    const list = document.getElementById('sidebarSkills');
+    list.innerHTML = '';
+
+    const activeSkills = skills.filter(s => s.eligible && SKILL_CATALOG.some(c => c.name === s.name));
+
+    if (activeSkills.length > 0) {
+      activeSkills.forEach(s => {
+        const cat = SKILL_CATALOG.find(c => c.name === s.name);
+        const el = document.createElement('div');
+        el.className = 'mini-skill';
+        el.innerHTML = `<span class="dot"></span> ${cat?.emoji || ''} ${cat?.label || s.name}`;
+        list.appendChild(el);
+      });
+    } else {
+      list.innerHTML = '<div class="mini-skill" style="font-style:italic">No active skills</div>';
+    }
+  } catch {
+    document.getElementById('sidebarSkills').innerHTML = '<div class="mini-skill" style="font-style:italic">Unable to load</div>';
+  }
+}
+
+// ===== Settings =====
+function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); onProviderChange(); }
+function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsStatus').textContent = ''; }
+
+function onProviderChange() {
+  const p = document.getElementById('providerSelect').value;
+  document.getElementById('modelInput').value = PROVIDER_MODELS[p] || '';
+  document.getElementById('apiKeyInput').placeholder = `Starts with ${PROVIDER_PREFIXES[p] || '...'}`;
+}
+
+async function saveSettings() {
+  const provider = document.getElementById('providerSelect').value;
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  const model = document.getElementById('modelInput').value.trim();
+  const status = document.getElementById('settingsStatus');
+
+  if (!apiKey) { status.textContent = 'Please enter an API key'; status.className = 'modal-status error'; return; }
+  status.textContent = 'Saving...'; status.className = 'modal-status';
+
+  try {
+    const profileId = `${provider}:default`;
+    const modelValue = model || PROVIDER_MODELS[provider];
+
+    const configRes = await rpcCall('config.get', {});
+    const hash = configRes.payload?.hash || '';
+    const cfg = configRes.payload?.config || {};
+
+    if (!cfg.auth) cfg.auth = {};
+    if (!cfg.auth.profiles) cfg.auth.profiles = {};
+    cfg.auth.profiles[profileId] = { provider, mode: 'api_key' };
+    cfg.auth.activeProfile = profileId;
+
+    if (!cfg.agents) cfg.agents = {};
+    if (!cfg.agents.defaults) cfg.agents.defaults = {};
+    if (!cfg.agents.defaults.model) cfg.agents.defaults.model = {};
+    cfg.agents.defaults.model.primary = modelValue;
+
+    const r1 = await rpcCall('config.set', { raw: JSON.stringify(cfg), baseHash: hash });
+    const r2 = await rpcCall('models.auth.set', { profileId, token: apiKey });
+
+    if (r1.ok) {
+      status.textContent = r2.ok !== false
+        ? 'Settings saved! You can now start chatting.'
+        : 'Model configured. API key may need manual setup.';
+      status.className = 'modal-status success';
+    } else {
+      status.textContent = r1.error?.message || 'Failed to save settings';
+      status.className = 'modal-status error';
+    }
+  } catch (err) {
+    status.textContent = 'Error: ' + (err.message || 'Failed to save');
+    status.className = 'modal-status error';
+  }
+}
+
+// ===== Init =====
+loadConfig().then(() => {
+  if (appConfig?.customerName) {
+    document.getElementById('customerName').textContent = appConfig.customerName;
+  }
+});
+document.getElementById('tokenInput').focus();
+document.getElementById('tokenInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>

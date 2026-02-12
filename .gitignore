@@ -37,3 +37,7 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Customer data
+customer-ui/config.json
+data/sprite_pool.json
