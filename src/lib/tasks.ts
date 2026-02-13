@@ -1,6 +1,10 @@
-import fs from 'fs/promises';
+const SPRITES_API = 'https://api.sprites.dev/v1';
+const SPRITE_NAME = 'swarm-orchestrator';
+const TASKS_PATH = '/home/sprite/blackboard/tasks.json';
 
-const TASKS_FILE = '/tmp/arcamatrix-tasks.json';
+function getSpritesToken() {
+  return process.env.SPRITES_API_TOKEN || process.env.SPRITES_TOKEN || '';
+}
 
 export interface TaskMetadata {
   customerEmail?: string;
@@ -28,15 +32,29 @@ export interface TaskStore {
 
 export async function loadTasks(): Promise<TaskStore> {
   try {
-    const data = await fs.readFile(TASKS_FILE, 'utf-8');
-    return JSON.parse(data);
+    const url = `${SPRITES_API}/sprites/${SPRITE_NAME}/fs/read?path=${encodeURIComponent(TASKS_PATH)}`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${getSpritesToken()}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) return { tasks: {} };
+    const text = await res.text();
+    return JSON.parse(text);
   } catch {
     return { tasks: {} };
   }
 }
 
 export async function saveTasks(store: TaskStore): Promise<void> {
-  await fs.writeFile(TASKS_FILE, JSON.stringify(store, null, 2), 'utf-8');
+  const url = `${SPRITES_API}/sprites/${SPRITE_NAME}/fs/write?path=${encodeURIComponent(TASKS_PATH)}&mkdir=true`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${getSpritesToken()}` },
+    body: JSON.stringify(store, null, 2),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to save tasks: ${res.status}`);
+  }
 }
 
 export async function createTask(taskId: string, type: string, metadata: TaskMetadata): Promise<void> {
