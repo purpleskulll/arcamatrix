@@ -8,9 +8,6 @@ export const config = {
 // Customer sprite mapping - hardcoded for reliability (Vercel /tmp is ephemeral)
 const customerMappings: Record<string, string> = {
   'justustheile': 'https://arca-customer-001-bl4yi.sprites.app',
-  'e2e-testuser': 'https://arca-customer-004-bl4yi.sprites.app',
-  'e2efinal': 'https://arca-customer-002-bl4yi.sprites.app',
-  'e2etest2': 'https://arca-customer-003-bl4yi.sprites.app',
 };
 
 export async function middleware(request: NextRequest) {
