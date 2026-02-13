@@ -138,6 +138,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .btn-primary:hover{opacity:.9}
 .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border) !important}
 .btn-secondary:hover{background:var(--border)}
+.btn-danger{background:var(--error);color:#fff;font-weight:600}
+.btn-danger:hover{opacity:.85}
 .modal-status{font-size:13px;margin-top:12px;min-height:20px}
 .modal-status.success{color:var(--success)}
 .modal-status.error{color:var(--error)}
@@ -834,6 +836,10 @@ function openSkillDetail(skillName) {
   html += '<div class="modal-actions">';
   html += '<button class="btn-secondary" onclick="closeSkillDetail()">Close</button>';
   if (allEnvVars.length > 0) {
+    const hasConfigured = allEnvVars.some(ev => missingEnv.indexOf(ev) === -1);
+    if (hasConfigured) {
+      html += `<button class="btn-danger" onclick="confirmClearCreds('${skillName}')">Clear Credentials</button>`;
+    }
     html += `<button class="btn-primary" onclick="saveDetailCreds('${skillName}')">Save &amp; Activate</button>`;
   }
   html += '</div>';
@@ -899,6 +905,54 @@ async function saveDetailCreds(skillName) {
     }
   } catch (err) {
     statusEl.textContent = 'Error: ' + (err.message || 'Failed to save');
+    statusEl.className = 'modal-status error';
+  }
+}
+
+function confirmClearCreds(skillName) {
+  const overlay = document.createElement('div');
+  overlay.id = 'confirmOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;max-width:360px;width:90%;text-align:center">
+      <h3 style="margin:0 0 12px;color:var(--error)">Clear Credentials?</h3>
+      <p style="color:var(--text2);font-size:14px;margin:0 0 20px">This will remove all saved API keys for this skill. The skill will become inactive until you enter new credentials.</p>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="btn-secondary" onclick="document.getElementById('confirmOverlay').remove()" style="flex:1;min-height:44px">Cancel</button>
+        <button class="btn-danger" onclick="document.getElementById('confirmOverlay').remove();clearCreds('${skillName}')" style="flex:1;min-height:44px">Yes, Clear</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function clearCreds(skillName) {
+  const gwSkill = allSkillsData.find(s => s.name === skillName);
+  if (!gwSkill) return;
+  const reqEnv = (gwSkill.requirements?.env || []).map(e => typeof e === 'string' ? e : (e.name || e));
+  const missingEnv = gwSkill.missing?.env || [];
+  const allEnvVars = reqEnv.length > 0 ? reqEnv : missingEnv;
+  const statusEl = document.getElementById('detailStatus');
+  statusEl.textContent = 'Clearing credentials...';
+  statusEl.className = 'modal-status';
+  try {
+    const configRes = await rpcCall('config.get', {});
+    configHash = configRes.payload?.hash || '';
+    const cfg = configRes.payload?.config || {};
+    if (!cfg.env) cfg.env = {};
+    for (const envVar of allEnvVars) { delete cfg.env[envVar]; }
+    const res = await rpcCall('config.set', { raw: JSON.stringify(cfg), baseHash: configHash });
+    if (res.ok) {
+      statusEl.textContent = 'Credentials cleared. The skill is now inactive.';
+      statusEl.className = 'modal-status success';
+      const skillsRes = await rpcCall('skills.status', {});
+      allSkillsData = skillsRes.payload?.skills || [];
+      setTimeout(() => openSkillDetail(skillName), 1000);
+    } else {
+      statusEl.textContent = res.error?.message || 'Failed to clear credentials.';
+      statusEl.className = 'modal-status error';
+    }
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + (err.message || 'Failed to clear');
     statusEl.className = 'modal-status error';
   }
 }
