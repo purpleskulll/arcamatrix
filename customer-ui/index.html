@@ -910,19 +910,19 @@ async function saveDetailCreds(skillName) {
 }
 
 function confirmClearCreds(skillName) {
+  const existing = document.getElementById('confirmOverlay');
+  if (existing) existing.remove();
   const overlay = document.createElement('div');
   overlay.id = 'confirmOverlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center';
-  overlay.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;max-width:360px;width:90%;text-align:center">
-      <h3 style="margin:0 0 12px;color:var(--error)">Clear Credentials?</h3>
-      <p style="color:var(--text2);font-size:14px;margin:0 0 20px">This will remove all saved API keys for this skill. The skill will become inactive until you enter new credentials.</p>
-      <div style="display:flex;gap:10px;justify-content:center">
-        <button class="btn-secondary" onclick="document.getElementById('confirmOverlay').remove()" style="flex:1;min-height:44px">Cancel</button>
-        <button class="btn-danger" onclick="document.getElementById('confirmOverlay').remove();clearCreds('${skillName}')" style="flex:1;min-height:44px">Yes, Clear</button>
-      </div>
-    </div>`;
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px;max-width:360px;width:100%;text-align:center';
+  box.innerHTML = '<h3 style="margin:0 0 12px;color:var(--error)">Clear Credentials?</h3><p style="color:var(--text2);font-size:14px;margin:0 0 20px">This will remove all saved API keys for this skill. The skill will become inactive until you enter new credentials.</p><div style="display:flex;gap:10px;justify-content:center"><button class="btn-secondary" style="flex:1;min-height:44px" id="confirmCancel">Cancel</button><button class="btn-danger" style="flex:1;min-height:44px" id="confirmYes">Yes, Clear</button></div>';
+  overlay.appendChild(box);
   document.body.appendChild(overlay);
+  document.getElementById('confirmCancel').onclick = function() { overlay.remove(); };
+  document.getElementById('confirmYes').onclick = function() { overlay.remove(); clearCreds(skillName); };
 }
 
 async function clearCreds(skillName) {
@@ -939,7 +939,7 @@ async function clearCreds(skillName) {
     configHash = configRes.payload?.hash || '';
     const cfg = configRes.payload?.config || {};
     if (!cfg.env) cfg.env = {};
-    for (const envVar of allEnvVars) { delete cfg.env[envVar]; }
+    for (const envVar of allEnvVars) { cfg.env[envVar] = ''; }
     const res = await rpcCall('config.set', { raw: JSON.stringify(cfg), baseHash: configHash });
     if (res.ok) {
       statusEl.textContent = 'Credentials cleared. The skill is now inactive.';
