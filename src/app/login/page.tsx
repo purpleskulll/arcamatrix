@@ -29,20 +29,38 @@ const SKILL_LABELS: Record<string, string> = {
   "email": "Email",
   "summarize": "Summarize",
   "filesystem": "File System",
+  "discord": "Discord",
+  "telegram": "Telegram",
+  "whatsapp": "WhatsApp",
+  "calendar": "Calendar",
+  "coding-agent": "Coding Agent",
+  "youtube": "YouTube",
+  "homekit": "HomeKit",
+  "voice": "Voice",
+  "1password": "1Password",
+  "canvas": "Canvas",
+  "gemini": "Gemini",
+  "video-frames": "Video Frames",
+  "image-gen": "Image Gen",
 };
 
+type Step = "email" | "verify" | "dashboard";
+
 export default function LoginPage() {
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [challengeToken, setChallengeToken] = useState("");
+  const [sessionToken, setSessionToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<CustomerData | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setData(null);
 
     try {
       const res = await fetch("/api/portal", {
@@ -55,8 +73,42 @@ export default function LoginPage() {
 
       if (result.error) {
         setError(result.error);
-      } else {
+      } else if (result.step === "verify") {
+        setChallengeToken(result.challengeToken);
+        setStep("verify");
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          action: "verify",
+          code,
+          challengeToken,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.error) {
+        setError(result.error);
+      } else if (result.sessionToken) {
+        setSessionToken(result.sessionToken);
         setData(result);
+        setStep("dashboard");
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -71,17 +123,29 @@ export default function LoginPage() {
       const res = await fetch("/api/portal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, action: "portal" }),
+        body: JSON.stringify({ email, action: "portal", sessionToken }),
       });
       const result = await res.json();
       if (result.url) {
         window.location.href = result.url;
+      } else if (result.error) {
+        setError(result.error);
       }
     } catch {
       setError("Could not open subscription portal.");
     } finally {
       setPortalLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    setData(null);
+    setEmail("");
+    setCode("");
+    setChallengeToken("");
+    setSessionToken("");
+    setStep("email");
+    setError("");
   };
 
   const formatDate = (timestamp: number) => {
@@ -101,19 +165,29 @@ export default function LoginPage() {
             <span className="text-2xl font-bold">Arcamatrix</span>
           </a>
 
-          {!data && (
+          {step === "email" && (
             <>
               <h1 className="text-2xl font-bold mb-2">Customer Dashboard</h1>
               <p className="text-gray-400">
-                Enter your email to view your subscription and skills.
+                Enter your email to receive a verification code.
+              </p>
+            </>
+          )}
+
+          {step === "verify" && (
+            <>
+              <h1 className="text-2xl font-bold mb-2">Enter Verification Code</h1>
+              <p className="text-gray-400">
+                We sent a 6-digit code to <span className="text-white">{email}</span>
               </p>
             </>
           )}
         </div>
 
-        {!data ? (
+        {/* Step 1: Email input */}
+        {step === "email" && (
           <>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSendCode} className="space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
                   Email Address
@@ -136,7 +210,7 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full py-3 rounded-lg bg-arca-primary hover:bg-arca-secondary transition font-medium disabled:opacity-50"
               >
-                {loading ? "Loading..." : "View My Dashboard"}
+                {loading ? "Sending..." : "Send Verification Code"}
               </button>
             </form>
 
@@ -146,7 +220,55 @@ export default function LoginPage() {
               </a>
             </div>
           </>
-        ) : (
+        )}
+
+        {/* Step 2: Code verification */}
+        {step === "verify" && (
+          <>
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div>
+                <label htmlFor="code" className="block text-sm font-medium text-gray-300 mb-1">
+                  Verification Code
+                </label>
+                <input
+                  id="code"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  required
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="000000"
+                  className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-arca-primary focus:outline-none text-white placeholder-gray-500 text-center text-2xl tracking-widest font-mono"
+                  autoFocus
+                />
+              </div>
+
+              {error && <p className="text-red-400 text-sm">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={loading || code.length !== 6}
+                className="w-full py-3 rounded-lg bg-arca-primary hover:bg-arca-secondary transition font-medium disabled:opacity-50"
+              >
+                {loading ? "Verifying..." : "Verify & Sign In"}
+              </button>
+            </form>
+
+            <div className="text-center mt-4 space-y-2">
+              <button
+                onClick={() => { setStep("email"); setCode(""); setError(""); }}
+                className="text-sm text-gray-400 hover:text-white transition"
+              >
+                Use a different email
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Step 3: Dashboard */}
+        {step === "dashboard" && data && (
           <div className="space-y-6">
             {/* Welcome */}
             <div className="text-center">
@@ -226,7 +348,7 @@ export default function LoginPage() {
                 {portalLoading ? "Loading..." : "Manage Subscription"}
               </button>
               <button
-                onClick={() => { setData(null); setEmail(""); }}
+                onClick={handleLogout}
                 className="py-3 px-5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition text-gray-400"
               >
                 Logout
