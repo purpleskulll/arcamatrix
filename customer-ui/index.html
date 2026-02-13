@@ -938,15 +938,21 @@ async function clearCreds(skillName) {
     const configRes = await rpcCall('config.get', {});
     configHash = configRes.payload?.hash || '';
     const cfg = configRes.payload?.config || {};
-    if (!cfg.env) cfg.env = {};
-    for (const envVar of allEnvVars) { cfg.env[envVar] = ''; }
+    // Remove env vars completely from config
+    if (cfg.env) {
+      for (const envVar of allEnvVars) { delete cfg.env[envVar]; }
+    }
     const res = await rpcCall('config.set', { raw: JSON.stringify(cfg), baseHash: configHash });
     if (res.ok) {
-      statusEl.textContent = 'Credentials cleared. The skill is now inactive.';
+      statusEl.textContent = 'Credentials cleared. Refreshing...';
       statusEl.className = 'modal-status success';
+      // Wait for gateway to process, then refresh skills and reopen modal
+      await new Promise(r => setTimeout(r, 1500));
       const skillsRes = await rpcCall('skills.status', {});
       allSkillsData = skillsRes.payload?.skills || [];
-      setTimeout(() => openSkillDetail(skillName), 1000);
+      loadSkillsGrid();
+      loadSidebarSkills();
+      openSkillDetail(skillName);
     } else {
       statusEl.textContent = res.error?.message || 'Failed to clear credentials.';
       statusEl.className = 'modal-status error';
