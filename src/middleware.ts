@@ -9,6 +9,7 @@ export const config = {
 const customerMappings: Record<string, string> = {
   'justustheile': 'https://arca-customer-001-bl4yi.sprites.app',
   'purplskull55': 'https://arca-customer-002-bl4yi.sprites.app',
+  'rolfth': 'https://arca-customer-003-bl4yi.sprites.app',
 };
 
 export async function middleware(request: NextRequest) {
