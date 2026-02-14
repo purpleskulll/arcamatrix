@@ -1,13 +1,40 @@
 import { NextResponse } from "next/server";
+import { verifyPassword } from "@/lib/password";
 import { loadTasks } from "@/lib/tasks";
 
 export const dynamic = 'force-dynamic';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
-const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const OTP_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "arcamatrix-otp-fallback";
 
-// --- HMAC helpers (stateless OTP verification for serverless) ---
+// Rate limiting: in-memory store (resets on cold start, good enough for serverless)
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkRateLimit(email: string): { allowed: boolean; remaining: number } {
+  const key = email.toLowerCase();
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    return { allowed: true, remaining: MAX_ATTEMPTS - 1 };
+  }
+
+  if (entry.count >= MAX_ATTEMPTS) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  entry.count++;
+  return { allowed: true, remaining: MAX_ATTEMPTS - entry.count };
+}
+
+function resetRateLimit(email: string) {
+  loginAttempts.delete(email.toLowerCase());
+}
+
+// --- HMAC session tokens (stateless) ---
 
 async function hmacSign(data: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -19,37 +46,8 @@ async function hmacSign(data: string): Promise<string> {
   return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-function generateOTP(): string {
-  const bytes = new Uint8Array(4);
-  crypto.getRandomValues(bytes);
-  const num = ((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]) >>> 0;
-  return String(num % 1000000).padStart(6, '0');
-}
-
-async function createChallenge(email: string, code: string): Promise<string> {
-  const expiry = Math.floor(Date.now() / 1000) + 600; // 10 min
-  const payload = `${email.toLowerCase()}:${code}:${expiry}`;
-  const sig = await hmacSign(payload);
-  // encode as base64: expiry.signature
-  return Buffer.from(`${expiry}:${sig}`).toString('base64');
-}
-
-async function verifyChallenge(email: string, code: string, token: string): Promise<boolean> {
-  try {
-    const decoded = Buffer.from(token, 'base64').toString();
-    const [expiryStr, sig] = decoded.split(':');
-    const expiry = parseInt(expiryStr);
-    if (Date.now() / 1000 > expiry) return false; // expired
-    const payload = `${email.toLowerCase()}:${code}:${expiry}`;
-    const expected = await hmacSign(payload);
-    return sig === expected;
-  } catch {
-    return false;
-  }
-}
-
 async function createSessionToken(email: string): Promise<string> {
-  const expiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour
+  const expiry = Math.floor(Date.now() / 1000) + 86400; // 24 hours
   const payload = `session:${email.toLowerCase()}:${expiry}`;
   const sig = await hmacSign(payload);
   return Buffer.from(`${email.toLowerCase()}:${expiry}:${sig}`).toString('base64');
@@ -68,39 +66,6 @@ async function verifySessionToken(token: string): Promise<string | null> {
     return sig === expected ? email : null;
   } catch {
     return null;
-  }
-}
-
-// --- Email sending ---
-
-async function sendOTPEmail(email: string, code: string): Promise<boolean> {
-  if (!RESEND_API_KEY || RESEND_API_KEY.startsWith('re_PLACEHOLDER')) return false;
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Arcamatrix <noreply@arcamatrix.com>',
-        to: [email],
-        subject: `${code} - Your Arcamatrix Verification Code`,
-        html: `
-          <div style="font-family: system-ui, sans-serif; max-width: 400px; margin: 0 auto; padding: 40px 20px;">
-            <h2 style="text-align: center; color: #667eea;">Arcamatrix</h2>
-            <p>Your verification code is:</p>
-            <div style="text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; padding: 20px; background: #f3f4f6; border-radius: 8px; margin: 20px 0;">
-              ${code}
-            </div>
-            <p style="color: #6b7280; font-size: 14px;">This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
-          </div>
-        `,
-      }),
-    });
-    return res.ok;
-  } catch {
-    return false;
   }
 }
 
@@ -172,13 +137,13 @@ async function getCustomerData(email: string, customer: { id: string; name: stri
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, action, code, challengeToken, sessionToken } = body;
+    const { email, password, action, sessionToken } = body;
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    // ACTION: Authenticated requests using session token
+    // Authenticated requests with session token
     if (sessionToken) {
       const verifiedEmail = await verifySessionToken(sessionToken);
       if (!verifiedEmail || verifiedEmail !== email.toLowerCase()) {
@@ -218,46 +183,48 @@ export async function POST(request: Request) {
       return NextResponse.json(data);
     }
 
-    // STEP 2: Verify OTP code
-    if (action === "verify" && code && challengeToken) {
-      const valid = await verifyChallenge(email, code, challengeToken);
-      if (!valid) {
-        return NextResponse.json({ error: "Invalid or expired code. Please try again." }, { status: 401 });
-      }
-
-      // Code verified — create session and return dashboard data
-      const customer = await findStripeCustomer(email);
-      if (!customer) {
-        return NextResponse.json({ error: "Customer not found." }, { status: 404 });
-      }
-
-      const sessionTkn = await createSessionToken(email);
-      const data = await getCustomerData(email, customer);
-      return NextResponse.json({ ...data, sessionToken: sessionTkn });
+    // Login with email + password
+    if (!password) {
+      return NextResponse.json({ error: "Password is required" }, { status: 400 });
     }
 
-    // STEP 1: Send OTP code
+    // Rate limiting
+    const rateCheck = checkRateLimit(email);
+    if (!rateCheck.allowed) {
+      return NextResponse.json({
+        error: "Too many login attempts. Please try again in 15 minutes."
+      }, { status: 429 });
+    }
+
+    // Find customer in Stripe
     const customer = await findStripeCustomer(email);
     if (!customer) {
-      return NextResponse.json(
-        { error: "No subscription found for this email. Please check your email address." },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        error: "No account found for this email."
+      }, { status: 404 });
     }
 
-    const otp = generateOTP();
-    const challenge = await createChallenge(email, otp);
-    const sent = await sendOTPEmail(email, otp);
-
-    if (!sent) {
-      return NextResponse.json({ error: "Could not send verification email. Please try again." }, { status: 500 });
+    // Check password hash from Stripe metadata
+    const storedHash = customer.metadata?.password_hash;
+    if (!storedHash) {
+      return NextResponse.json({
+        error: "No password set. Please use the link in your welcome email or contact support."
+      }, { status: 401 });
     }
 
-    return NextResponse.json({
-      step: "verify",
-      challengeToken: challenge,
-      message: "Verification code sent to your email.",
-    });
+    const valid = await verifyPassword(password, storedHash);
+    if (!valid) {
+      return NextResponse.json({
+        error: `Invalid password. ${rateCheck.remaining} attempts remaining.`
+      }, { status: 401 });
+    }
+
+    // Success — reset rate limit and create session
+    resetRateLimit(email);
+    const sessionTkn = await createSessionToken(email);
+    const data = await getCustomerData(email, customer);
+    return NextResponse.json({ ...data, sessionToken: sessionTkn });
+
   } catch (error) {
     console.error("Portal error:", error);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });

@@ -44,20 +44,16 @@ const SKILL_LABELS: Record<string, string> = {
   "image-gen": "Image Gen",
 };
 
-type Step = "email" | "verify" | "dashboard";
-
 export default function LoginPage() {
-  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [challengeToken, setChallengeToken] = useState("");
+  const [password, setPassword] = useState("");
   const [sessionToken, setSessionToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<CustomerData | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
 
-  const handleSendCode = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -66,39 +62,7 @@ export default function LoginPage() {
       const res = await fetch("/api/portal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const result = await res.json();
-
-      if (result.error) {
-        setError(result.error);
-      } else if (result.step === "verify") {
-        setChallengeToken(result.challengeToken);
-        setStep("verify");
-      }
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch("/api/portal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          action: "verify",
-          code,
-          challengeToken,
-        }),
+        body: JSON.stringify({ email, password }),
       });
 
       const result = await res.json();
@@ -108,7 +72,6 @@ export default function LoginPage() {
       } else if (result.sessionToken) {
         setSessionToken(result.sessionToken);
         setData(result);
-        setStep("dashboard");
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -141,10 +104,8 @@ export default function LoginPage() {
   const handleLogout = () => {
     setData(null);
     setEmail("");
-    setCode("");
-    setChallengeToken("");
+    setPassword("");
     setSessionToken("");
-    setStep("email");
     setError("");
   };
 
@@ -156,6 +117,75 @@ export default function LoginPage() {
     });
   };
 
+  // Login form
+  if (!data) {
+    return (
+      <main className="min-h-screen flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-lg">
+          <div className="text-center mb-8">
+            <a href="/" className="inline-flex items-center space-x-2 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-br from-arca-primary to-arca-secondary rounded-lg"></div>
+              <span className="text-2xl font-bold">Arcamatrix</span>
+            </a>
+            <h1 className="text-2xl font-bold mb-2">Customer Dashboard</h1>
+            <p className="text-gray-400">
+              Sign in with your email and password.
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-arca-primary focus:outline-none text-white placeholder-gray-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Your password"
+                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-arca-primary focus:outline-none text-white placeholder-gray-500"
+              />
+            </div>
+
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-lg bg-arca-primary hover:bg-arca-secondary transition font-medium disabled:opacity-50"
+            >
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
+
+          <div className="text-center mt-6">
+            <a href="/" className="text-sm text-gray-400 hover:text-white transition">
+              Back to Home
+            </a>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Dashboard
   return (
     <main className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg">
@@ -164,204 +194,100 @@ export default function LoginPage() {
             <div className="w-10 h-10 bg-gradient-to-br from-arca-primary to-arca-secondary rounded-lg"></div>
             <span className="text-2xl font-bold">Arcamatrix</span>
           </a>
-
-          {step === "email" && (
-            <>
-              <h1 className="text-2xl font-bold mb-2">Customer Dashboard</h1>
-              <p className="text-gray-400">
-                Enter your email to receive a verification code.
-              </p>
-            </>
-          )}
-
-          {step === "verify" && (
-            <>
-              <h1 className="text-2xl font-bold mb-2">Enter Verification Code</h1>
-              <p className="text-gray-400">
-                We sent a 6-digit code to <span className="text-white">{email}</span>
-              </p>
-            </>
-          )}
         </div>
 
-        {/* Step 1: Email input */}
-        {step === "email" && (
-          <>
-            <form onSubmit={handleSendCode} className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
-                  Email Address
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-arca-primary focus:outline-none text-white placeholder-gray-500"
-                />
-              </div>
-
-              {error && <p className="text-red-400 text-sm">{error}</p>}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 rounded-lg bg-arca-primary hover:bg-arca-secondary transition font-medium disabled:opacity-50"
-              >
-                {loading ? "Sending..." : "Send Verification Code"}
-              </button>
-            </form>
-
-            <div className="text-center mt-6">
-              <a href="/" className="text-sm text-gray-400 hover:text-white transition">
-                Back to Home
-              </a>
-            </div>
-          </>
-        )}
-
-        {/* Step 2: Code verification */}
-        {step === "verify" && (
-          <>
-            <form onSubmit={handleVerifyCode} className="space-y-4">
-              <div>
-                <label htmlFor="code" className="block text-sm font-medium text-gray-300 mb-1">
-                  Verification Code
-                </label>
-                <input
-                  id="code"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                  required
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder="000000"
-                  className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-arca-primary focus:outline-none text-white placeholder-gray-500 text-center text-2xl tracking-widest font-mono"
-                  autoFocus
-                />
-              </div>
-
-              {error && <p className="text-red-400 text-sm">{error}</p>}
-
-              <button
-                type="submit"
-                disabled={loading || code.length !== 6}
-                className="w-full py-3 rounded-lg bg-arca-primary hover:bg-arca-secondary transition font-medium disabled:opacity-50"
-              >
-                {loading ? "Verifying..." : "Verify & Sign In"}
-              </button>
-            </form>
-
-            <div className="text-center mt-4 space-y-2">
-              <button
-                onClick={() => { setStep("email"); setCode(""); setError(""); }}
-                className="text-sm text-gray-400 hover:text-white transition"
-              >
-                Use a different email
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Step 3: Dashboard */}
-        {step === "dashboard" && data && (
-          <div className="space-y-6">
-            {/* Welcome */}
-            <div className="text-center">
-              <h1 className="text-2xl font-bold mb-1">
-                Welcome, {data.customer.name}
-              </h1>
-              <p className="text-gray-400 text-sm">{data.customer.email}</p>
-            </div>
-
-            {/* Subscription Status */}
-            <div className="p-5 rounded-xl bg-white/5 border border-white/10">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                Subscription
-              </h2>
-              {data.subscription ? (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">Status</span>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      data.subscription.cancelAtPeriodEnd
-                        ? "bg-yellow-500/20 text-yellow-400"
-                        : "bg-green-500/20 text-green-400"
-                    }`}>
-                      {data.subscription.cancelAtPeriodEnd ? "Cancels at period end" : "Active"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">Renews</span>
-                    <span className="text-white">{formatDate(data.subscription.currentPeriodEnd)}</span>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-gray-400">No active subscription found.</p>
-              )}
-            </div>
-
-            {/* Skills */}
-            <div className="p-5 rounded-xl bg-white/5 border border-white/10">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                Your Skills
-              </h2>
-              {data.skills.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {data.skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="px-3 py-1.5 rounded-lg bg-arca-primary/20 text-arca-primary border border-arca-primary/30 text-sm font-medium"
-                    >
-                      {SKILL_LABELS[skill] || skill}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-400">No skills configured yet.</p>
-              )}
-            </div>
-
-            {/* Workspace Link */}
-            {data.workspaceUrl && (
-              <a
-                href={data.workspaceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full py-3 rounded-lg bg-arca-primary hover:bg-arca-secondary transition font-medium text-center"
-              >
-                Open AI Workspace
-              </a>
-            )}
-
-            {/* Manage / Cancel */}
-            <div className="flex gap-3">
-              <button
-                onClick={handleManageSubscription}
-                disabled={portalLoading}
-                className="flex-1 py-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition font-medium text-gray-300 disabled:opacity-50"
-              >
-                {portalLoading ? "Loading..." : "Manage Subscription"}
-              </button>
-              <button
-                onClick={handleLogout}
-                className="py-3 px-5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition text-gray-400"
-              >
-                Logout
-              </button>
-            </div>
-
-            <div className="text-center">
-              <a href="/" className="text-sm text-gray-400 hover:text-white transition">
-                Back to Home
-              </a>
-            </div>
+        <div className="space-y-6">
+          {/* Welcome */}
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-1">
+              Welcome, {data.customer.name}
+            </h1>
+            <p className="text-gray-400 text-sm">{data.customer.email}</p>
           </div>
-        )}
+
+          {/* Subscription Status */}
+          <div className="p-5 rounded-xl bg-white/5 border border-white/10">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+              Subscription
+            </h2>
+            {data.subscription ? (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300">Status</span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    data.subscription.cancelAtPeriodEnd
+                      ? "bg-yellow-500/20 text-yellow-400"
+                      : "bg-green-500/20 text-green-400"
+                  }`}>
+                    {data.subscription.cancelAtPeriodEnd ? "Cancels at period end" : "Active"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300">Renews</span>
+                  <span className="text-white">{formatDate(data.subscription.currentPeriodEnd)}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-400">No active subscription found.</p>
+            )}
+          </div>
+
+          {/* Skills */}
+          <div className="p-5 rounded-xl bg-white/5 border border-white/10">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+              Your Skills
+            </h2>
+            {data.skills.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {data.skills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="px-3 py-1.5 rounded-lg bg-arca-primary/20 text-arca-primary border border-arca-primary/30 text-sm font-medium"
+                  >
+                    {SKILL_LABELS[skill] || skill}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400">No skills configured yet.</p>
+            )}
+          </div>
+
+          {/* Workspace Link */}
+          {data.workspaceUrl && (
+            <a
+              href={data.workspaceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-3 rounded-lg bg-arca-primary hover:bg-arca-secondary transition font-medium text-center"
+            >
+              Open AI Workspace
+            </a>
+          )}
+
+          {/* Manage / Cancel */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleManageSubscription}
+              disabled={portalLoading}
+              className="flex-1 py-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition font-medium text-gray-300 disabled:opacity-50"
+            >
+              {portalLoading ? "Loading..." : "Manage Subscription"}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="py-3 px-5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition text-gray-400"
+            >
+              Logout
+            </button>
+          </div>
+
+          <div className="text-center">
+            <a href="/" className="text-sm text-gray-400 hover:text-white transition">
+              Back to Home
+            </a>
+          </div>
+        </div>
       </div>
     </main>
   );
