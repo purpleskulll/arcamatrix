@@ -131,6 +131,9 @@ export default function LoginPage() {
             <p className="text-gray-400">
               Sign in with your email and password.
             </p>
+            <p className="text-gray-500 text-sm mt-2">
+              Your password works for both the Dashboard and your AI Workspace.
+            </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
