@@ -139,6 +139,20 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
+  // Pflaster health check endpoint (no auth required)
+  if (req.url === '/pflaster/health') {
+    const gwOk = await new Promise(r => {
+      const t = net.connect(GW_PORT, '127.0.0.1', () => { t.end(); r(true); });
+      t.on('error', () => r(false));
+      t.setTimeout(3000, () => { t.destroy(); r(false); });
+    });
+    res.writeHead(200, {'Content-Type':'application/json'});
+    return res.end(JSON.stringify({
+      proxy: true, gateway: gwOk,
+      uptime: process.uptime(), email: CUSTOMER_EMAIL
+    }));
+  }
+
   const session = verifySession(getCookie(req, 'arca_session'));
   if (!session) {
     res.writeHead(200, {'Content-Type':'text/html; charset=utf-8'});
