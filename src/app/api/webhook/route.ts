@@ -89,6 +89,7 @@ async function createProvisioningTask(data: {
   skills: string[];
   stripeCustomerId: string;
   subscriptionId: string;
+  stripeEventId?: string;
 }) {
   const taskId = generateTaskId();
   await createTask(taskId, "provisioning", data);
