@@ -5,7 +5,7 @@ import { loadTasks } from "@/lib/tasks";
 export const dynamic = 'force-dynamic';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
-const OTP_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "arcamatrix-otp-fallback";
+const SESSION_SECRET = process.env.SESSION_SECRET || process.env.ADMIN_API_KEY || "";
 
 // Rate limiting: in-memory store (resets on cold start, good enough for serverless)
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -39,7 +39,7 @@ function resetRateLimit(email: string) {
 async function hmacSign(data: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
-    'raw', encoder.encode(OTP_SECRET),
+    'raw', encoder.encode(SESSION_SECRET),
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
   );
   const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
@@ -63,7 +63,13 @@ async function verifySessionToken(token: string): Promise<string | null> {
     if (Date.now() / 1000 > expiry) return null;
     const payload = `session:${email}:${expiry}`;
     const expected = await hmacSign(payload);
-    return sig === expected ? email : null;
+    // Constant-time comparison
+    if (sig.length !== expected.length) return null;
+    let diff = 0;
+    for (let i = 0; i < sig.length; i++) {
+      diff |= sig.charCodeAt(i) ^ expected.charCodeAt(i);
+    }
+    return diff === 0 ? email : null;
   } catch {
     return null;
   }

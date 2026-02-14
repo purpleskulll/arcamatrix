@@ -10,6 +10,18 @@ function getSpritesToken() {
   return process.env.SPRITES_API_TOKEN || process.env.SPRITES_TOKEN || '';
 }
 
+function verifyAdmin(request: Request): boolean {
+  const key = process.env.ADMIN_API_KEY;
+  if (!key) return false;
+  const authHeader = request.headers.get('x-admin-key') || '';
+  if (authHeader.length !== key.length) return false;
+  let diff = 0;
+  for (let i = 0; i < key.length; i++) {
+    diff |= authHeader.charCodeAt(i) ^ key.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 async function loadTasks() {
   try {
     const url = `${SPRITES_API}/sprites/${SPRITE_NAME}/fs/read?path=${encodeURIComponent(TASKS_PATH)}`;
@@ -37,10 +49,11 @@ async function saveTasks(store: any) {
   }
 }
 
-// GET /api/tasks - List tasks (provisioning agent polls this)
-// GET /api/tasks?status=pending&type=provisioning - Filter
-// GET /api/tasks?subscriptionId=sub_xxx - Find by subscription
 export async function GET(request: Request) {
+  if (!verifyAdmin(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
@@ -70,13 +83,16 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ tasks });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
 
-// POST /api/tasks - Create a task (called by webhook)
 export async function POST(request: Request) {
+  if (!verifyAdmin(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const data = await request.json();
 
@@ -96,13 +112,16 @@ export async function POST(request: Request) {
 
     await saveTasks(store);
     return NextResponse.json({ success: true, taskId: data.taskId }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
 
-// PATCH /api/tasks - Update task status (called by provisioning agent)
 export async function PATCH(request: Request) {
+  if (!verifyAdmin(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const data = await request.json();
     const { taskId, status, result } = data;
@@ -125,7 +144,7 @@ export async function PATCH(request: Request) {
 
     await saveTasks(store);
     return NextResponse.json({ success: true, taskId });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

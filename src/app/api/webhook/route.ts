@@ -13,8 +13,8 @@ const TIMESTAMP_TOLERANCE = 300; // 5 minutes
 
 async function verifyStripeSignature(payload: string, signature: string): Promise<boolean> {
   if (!STRIPE_WEBHOOK_SECRET) {
-    console.warn("STRIPE_WEBHOOK_SECRET not configured — skipping verification");
-    return true; // Allow if secret not configured (dev mode)
+    console.error("STRIPE_WEBHOOK_SECRET not configured — rejecting all webhooks");
+    return false;
   }
 
   // Parse signature header: t=timestamp,v1=sig1,v1=sig2,...
@@ -65,15 +65,19 @@ async function verifyStripeSignature(payload: string, signature: string): Promis
 }
 
 function generateUsername(email: string): string {
-  // Extract username from email and sanitize
   const base = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (base.length === 0) {
+    // Fallback for emails with no alphanumeric prefix
+    const hash = Array.from(new Uint8Array(crypto.getRandomValues(new Uint8Array(4))))
+      .map(b => b.toString(36)).join('');
+    return `user${hash}`;
+  }
   return base.substring(0, 16);
 }
 
 function generateTaskId(): string {
-  // Generate PROV-YYYYMMDD-XXXX format
   const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  const random = crypto.randomUUID().split('-')[0]; // 8 hex chars = 4 billion possibilities
   return `PROV-${date}-${random}`;
 }
 

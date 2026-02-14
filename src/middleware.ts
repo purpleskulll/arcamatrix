@@ -28,10 +28,12 @@ export async function middleware(request: NextRequest) {
   const spriteUrl = customerMappings[username];
 
   if (!spriteUrl) {
+    // Sanitize username to prevent XSS via crafted Host header
+    const safe = username.replace(/[^a-z0-9-]/gi, '');
     return new NextResponse(
       `<html><body style="font-family: system-ui; padding: 40px; text-align: center;">
         <h1>Assistant Not Found</h1>
-        <p>No AI assistant found for username: ${username}</p>
+        <p>No AI assistant found for: ${safe}</p>
       </body></html>`,
       { status: 404, headers: { 'content-type': 'text/html' } }
     );
