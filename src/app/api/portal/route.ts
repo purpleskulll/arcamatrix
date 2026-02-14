@@ -5,7 +5,10 @@ import { loadTasks } from "@/lib/tasks";
 export const dynamic = 'force-dynamic';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
-const SESSION_SECRET = process.env.SESSION_SECRET || process.env.ADMIN_API_KEY || "";
+const SESSION_SECRET = process.env.SESSION_SECRET || process.env.ADMIN_API_KEY || (() => {
+  console.error("CRITICAL: Neither SESSION_SECRET nor ADMIN_API_KEY is set — portal auth will reject all requests");
+  return "";
+})();
 
 // Rate limiting: in-memory store (resets on cold start, good enough for serverless)
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -37,6 +40,7 @@ function resetRateLimit(email: string) {
 // --- HMAC session tokens (stateless) ---
 
 async function hmacSign(data: string): Promise<string> {
+  if (!SESSION_SECRET) throw new Error("SESSION_SECRET not configured");
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw', encoder.encode(SESSION_SECRET),

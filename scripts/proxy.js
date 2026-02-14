@@ -117,7 +117,7 @@ const server = http.createServer(async (req, res) => {
           const signed = signSession(sessionData);
           res.writeHead(200, {
             'Content-Type': 'application/json',
-            'Set-Cookie': 'arca_session=' + encodeURIComponent(signed) + '; Path=/; HttpOnly; SameSite=Strict; Max-Age=' + SESSION_MAX_AGE
+            'Set-Cookie': 'arca_session=' + encodeURIComponent(signed) + '; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=' + SESSION_MAX_AGE
           });
           return res.end(JSON.stringify({ success: true }));
         }

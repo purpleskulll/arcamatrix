@@ -37,9 +37,16 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action, username, spriteUrl, spriteName, adminKey } = body;
 
-    // Simple auth
-    const expectedKey = process.env.ADMIN_API_KEY || '';
-    if (adminKey !== expectedKey) {
+    // Auth with constant-time comparison
+    const expectedKey = process.env.ADMIN_API_KEY;
+    if (!expectedKey || !adminKey || adminKey.length !== expectedKey.length) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    let diff = 0;
+    for (let i = 0; i < expectedKey.length; i++) {
+      diff |= adminKey.charCodeAt(i) ^ expectedKey.charCodeAt(i);
+    }
+    if (diff !== 0) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -95,9 +102,22 @@ export async function POST(request: Request) {
   }
 }
 
-// Get mapping for a username (public endpoint for middleware)
+// Get mapping for a username (admin-only)
 export async function GET(request: Request) {
   try {
+    const adminKey = request.headers.get('x-admin-key') || '';
+    const expectedKey = process.env.ADMIN_API_KEY;
+    if (!expectedKey || !adminKey || adminKey.length !== expectedKey.length) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    let diff = 0;
+    for (let i = 0; i < expectedKey.length; i++) {
+      diff |= adminKey.charCodeAt(i) ^ expectedKey.charCodeAt(i);
+    }
+    if (diff !== 0) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const url = new URL(request.url);
     const username = url.searchParams.get('username');
 
