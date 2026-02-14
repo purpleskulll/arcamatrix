@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 sys.path.insert(0, str(Path(__file__).parent))
+from pflaster import pflaster_wrap
 
 # Graceful shutdown on SIGTERM
 _shutdown_requested = False
@@ -38,11 +39,11 @@ PREPARE_SCRIPT = Path("/home/sprite/prepare_pool_sprite.sh")
 AGENT_ID = "provisioning-agent"
 
 SPRITES_API_BASE = "https://api.sprites.dev/v1"
-SPRITES_TOKEN = os.environ.get("SPRITES_TOKEN", "")
+SPRITES_TOKEN = "justus-theile/1438472/00c5162049d59cf0df2ebd01f084dc08/1659a4edcb98c5be704c702a07c716beaeace0b83b30113d9e58243f02fac4d4"
 
 ARCAMATRIX_API_BASE = "https://arcamatrix.com/api"
-ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+ADMIN_API_KEY = "ppzKpfM_ycYd0sdYtznrjnBCaCQBMiq8PPckHqyvD3s"
+RESEND_API_KEY = "re_JjFfYBsd_C3Baf58gAQAPtkwdQneDgc7k"
 
 REPO_DIR = Path("/home/sprite/arcamatrix")
 MIDDLEWARE_PATH = REPO_DIR / "src" / "middleware.ts"
@@ -634,7 +635,7 @@ def run_agent():
             for task_id, task in get_pending_tasks("provisioning"):
                 log(f"Processing {task_id}")
                 update_task_status(task_id, 'in_progress')
-                result = provision_sprite(task_id, task)
+                result = pflaster_wrap(provision_sprite, task_id, task)
                 status = 'completed' if result['success'] else 'failed'
                 update_task_status(task_id, status, result)
                 log(f"{task_id} {status}")
@@ -643,7 +644,7 @@ def run_agent():
             for task_id, task in get_pending_tasks("recycle"):
                 log(f"Processing {task_id}")
                 update_task_status(task_id, 'in_progress')
-                result = handle_recycle(task_id, task)
+                result = pflaster_wrap(handle_recycle, task_id, task)
                 status = 'completed' if result['success'] else 'failed'
                 update_task_status(task_id, status, result)
                 log(f"{task_id} {status}")
