@@ -9,22 +9,34 @@ const LINEAR_API_KEY = process.env.LINEAR_API_KEY || "";
 const LINEAR_TEAM_ID = process.env.LINEAR_TEAM_ID || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 
+const TIMESTAMP_TOLERANCE = 300; // 5 minutes
+
 async function verifyStripeSignature(payload: string, signature: string): Promise<boolean> {
   if (!STRIPE_WEBHOOK_SECRET) {
-    console.warn("STRIPE_WEBHOOK_SECRET not configured");
+    console.warn("STRIPE_WEBHOOK_SECRET not configured — skipping verification");
+    return true; // Allow if secret not configured (dev mode)
+  }
+
+  // Parse signature header: t=timestamp,v1=sig1,v1=sig2,...
+  const parts = signature.split(",").reduce((acc, part) => {
+    const [key, val] = part.split("=");
+    if (key === "t") acc.timestamp = val;
+    if (key === "v1") acc.signatures.push(val);
+    return acc;
+  }, { timestamp: "", signatures: [] as string[] });
+
+  if (!parts.timestamp || parts.signatures.length === 0) {
     return false;
   }
 
-  const timestamp = signature.split(",")[0]?.split("=")[1];
-  const sig = signature.split(",")[1]?.split("=")[1];
-
-  if (!timestamp || !sig) {
+  // Check timestamp tolerance (prevent replay attacks)
+  const ts = parseInt(parts.timestamp);
+  if (Math.abs(Date.now() / 1000 - ts) > TIMESTAMP_TOLERANCE) {
+    console.warn("Stripe webhook timestamp too old/new");
     return false;
   }
 
-  const signedPayload = `${timestamp}.${payload}`;
-
-  // Use Web Crypto API instead of Node.js crypto
+  const signedPayload = `${parts.timestamp}.${payload}`;
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
@@ -34,27 +46,22 @@ async function verifyStripeSignature(payload: string, signature: string): Promis
     ['sign']
   );
 
-  const signature_bytes = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    encoder.encode(signedPayload)
-  );
-
-  const expectedSig = Array.from(new Uint8Array(signature_bytes))
+  const sigBytes = await crypto.subtle.sign('HMAC', key, encoder.encode(signedPayload));
+  const expectedSig = Array.from(new Uint8Array(sigBytes))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 
-  // Constant-time comparison
-  if (sig.length !== expectedSig.length) {
-    return false;
+  // Check if ANY v1 signature matches (constant-time)
+  for (const sig of parts.signatures) {
+    if (sig.length !== expectedSig.length) continue;
+    let diff = 0;
+    for (let i = 0; i < sig.length; i++) {
+      diff |= sig.charCodeAt(i) ^ expectedSig.charCodeAt(i);
+    }
+    if (diff === 0) return true;
   }
 
-  let result = 0;
-  for (let i = 0; i < sig.length; i++) {
-    result |= sig.charCodeAt(i) ^ expectedSig.charCodeAt(i);
-  }
-
-  return result === 0;
+  return false;
 }
 
 function generateUsername(email: string): string {
@@ -136,12 +143,14 @@ export async function POST(request: Request) {
     const body = await request.text();
     const signature = request.headers.get("stripe-signature");
 
-    // Verify Stripe signature (log warning but dont block - signature algo may drift)
-    if (signature) {
-      const sigValid = await verifyStripeSignature(body, signature);
-      if (!sigValid) {
-        console.warn("Stripe signature verification failed - processing anyway");
-      }
+    // Verify Stripe signature
+    if (!signature) {
+      return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 });
+    }
+    const sigValid = await verifyStripeSignature(body, signature);
+    if (!sigValid) {
+      console.error("Stripe signature verification failed — rejecting webhook");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     const event = JSON.parse(body);
