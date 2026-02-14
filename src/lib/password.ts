@@ -7,8 +7,9 @@ const ITERATIONS = 100_000;
 const HASH_LENGTH = 32; // 256 bits
 const SALT_LENGTH = 16; // 128 bits
 
-function hexEncode(buf: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+function hexEncode(buf: ArrayBuffer | Uint8Array): string {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function hexDecode(hex: string): Uint8Array {
