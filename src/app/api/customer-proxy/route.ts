@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const { action, username, spriteUrl, spriteName, adminKey } = body;
 
     // Simple auth
-    const expectedKey = process.env.ADMIN_API_KEY || '***REDACTED_ADMIN_KEY***';
+    const expectedKey = process.env.ADMIN_API_KEY || '';
     if (adminKey !== expectedKey) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
