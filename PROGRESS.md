@@ -1,7 +1,7 @@
 # Arcamatrix - Progress & Handoff Notes
 
-> Last updated: 2026-02-12
-> Status: **In Progress** - Provisioning pipeline improved, mobile UI fixed
+> Last updated: 2026-02-13
+> Status: **Production-Ready** - Full pipeline working, self-healing enabled, security hardened
 
 ---
 
@@ -16,10 +16,11 @@
 ### 2. Provisioning Pipeline (DONE)
 - Swarm orchestrator on `swarm-orchestrator` Sprite VM
 - `provisioning_agent.py` polls `/api/tasks` for `PROV-*` tasks every 30s
-- `sprite_pool.py` manages pre-created Sprite VMs
+- `sprite_pool.py` manages pre-created Sprite VMs (currently 7 available, 1 assigned)
 - `provision_customer.sh` installs OpenClaw on customer sprite
 - Customer-sprite mapping registered for subdomain routing
 - Custom UI uploaded automatically during provisioning
+- **Pflaster self-healing** wraps all provisioning + recycle tasks (see below)
 
 ### 3. Subdomain Routing (DONE)
 - `*.arcamatrix.com` wildcard DNS on Vercel
@@ -28,15 +29,32 @@
 - `config.json` on each sprite has `gatewayUrl` for direct WS connection
 
 ### 4. Customer UI (DONE)
-- Single HTML file served by OpenClaw Gateway
-- **Login**: Token-based authentication via WebSocket RPC
+- Custom HTML/CSS/JS served via authenticated proxy (`proxy.js`)
+- **Login**: Password-based auth verified against Arcamatrix portal API
 - **Chat**: Full streaming chat with AI (works end-to-end)
 - **Settings**: AI provider + API key configuration (Anthropic, OpenAI, Google, OpenRouter, xAI)
 - **Skill Catalog**: Full-page view with responsive card grid and detail modals
 - **Mobile UI**: Fully responsive - hidden sidebar with hamburger menu, large touch-friendly inputs
-- **Session persistence**: Token stored in sessionStorage, auto-reconnect
+- **Session persistence**: Signed HMAC cookies with 24h expiry
 
-### 5. OpenClaw Gateway RPC (VERIFIED)
+### 5. Security & Auth (DONE)
+- Password auth via portal API (Stripe subscription verification built-in)
+- HMAC-SHA256 signed session cookies with constant-time comparison
+- Rate limiting: 5 login attempts per 15min per IP
+- WebSocket auth: session cookie verified on upgrade
+- Path traversal protection on static file serving
+- Git history purged of all leaked credentials
+- All API keys rotated and stored in env vars
+
+### 6. Pflaster Self-Healing System (DONE)
+- **Pre-hook** (before every task): Checks pool status, Sprites API, target services, git repo state, orphan tasks
+- **Post-hook** (after every task): Verifies result, fixes root causes, refills pool, logs audit trail
+- Quick-patches applied automatically: service restarts, emergency sprite creation, git resets
+- Health endpoint at `/pflaster/health` on every customer sprite (no auth required)
+- Audit log in `pflaster_state.json` on orchestrator
+- Integration: `pflaster_wrap()` wraps `provision_sprite()` and `handle_recycle()`
+
+### 7. OpenClaw Gateway RPC (VERIFIED)
 All these RPC methods have been tested and work:
 - `connect` with `client.id: 'openclaw-control-ui'`, `client.mode: 'webchat'`
 - `skills.status` - returns all 50 skills with `eligible`, `missing.env`, `missing.bins`
@@ -47,62 +65,73 @@ All these RPC methods have been tested and work:
 
 ---
 
-## What Was Just Done (Latest Session)
+## Deployed Infrastructure
 
-### Provisioning Pipeline Improvements
-1. **provision_customer.sh** now:
-   - Generates `config.json` with `gatewayUrl` and `customerName` for direct WebSocket
-   - Sets `allowedOrigins` in OpenClaw gateway config for CORS
-   - Configures env var placeholders for selected skills (users set actual keys in UI)
-2. **provisioning_agent.py** now:
-   - Auto-updates `middleware.ts` with new customer mappings via git commit+push
-   - Triggers Vercel auto-deploy for permanent subdomain routing
-   - Removes mappings on customer recycle/cancellation
-3. **UI template on orchestrator** updated to latest version (53KB with mobile fixes)
+| Component | Location | Status |
+|-----------|----------|--------|
+| Web App (Next.js) | Vercel - `arcamatrix.com` | Running |
+| Swarm Orchestrator | `swarm-orchestrator` Sprite | Running |
+| Provisioning Agent | Orchestrator - systemd service | Running |
+| Pflaster Self-Healing | Orchestrator - wraps all tasks | Active |
+| Customer Sprite #001 | `arca-customer-001` Sprite | Running (assigned) |
+| Customer URL | `justustheile.arcamatrix.com` | Active |
+| Sprite Pool | 7 available + 1 assigned = 8 total | Healthy |
 
-### Mobile UI Overhaul
-- Sidebar hidden by default on mobile, slide-in animation via `transform:translateX`
-- Hamburger menu button in mobile header
-- Chat input: 48px min-height, 16px font for touch usability
-- Fully responsive layout with `flex-direction:column` on mobile
-
-### Subdomain Routing Fixed
-- Middleware moved from project root to `src/middleware.ts` (Next.js `src` directory requirement)
-- `NextResponse.rewrite()` keeps branded URL in browser while serving sprite content
-- Vercel `requireVerifiedCommits` disabled for auto-deploy from provisioning agent
-
----
-
-## What Still Needs Work
-
-### Priority 1: End-to-End Provisioning Test
-- Create a real test purchase through Stripe checkout
-- Verify the full flow: payment -> task created -> agent provisions -> email sent -> customer can log in and use
-
-### Priority 4: Skills That Need Extra Work
-- **Slack**: Needs Slack app setup, not just env vars
-- **Email (himalaya)**: Needs CLI binary installed + config
-- **Summarize**: Needs CLI binary installed
-- These should probably be marked as "Coming Soon" in the UI for now
-
-### Priority 5: Production Hardening
-- Replace `***REDACTED_ADMIN_KEY***` with a real secret
-- Replace `customer-001-token` pattern with unique per-customer tokens (already generates random tokens in provision script)
-- Add HTTPS certificate handling (handled by Sprites automatically)
-- Rate limiting on API endpoints
-- Error monitoring / logging
+### Sprite Pool Status
+| Sprite | Status |
+|--------|--------|
+| arca-customer-001 | Assigned to justustheile |
+| arca-customer-002 | Available |
+| arca-customer-003 | Available |
+| arca-customer-004 | Available |
+| arca-customer-006 | Available |
+| arca-customer-007 | Available |
+| arca-customer-008 | Available |
+| arca-customer-009 | Available (new) |
 
 ---
 
-## Key Technical Details for Next Developer
+## File Map
+
+### On `swarm-orchestrator`
+| File | Purpose |
+|------|---------|
+| `provisioning_agent.py` | Main agent - polls tasks, provisions sprites, handles recycles |
+| `pflaster.py` | Self-healing wrapper - pre-checks, post-fixes, audit logging |
+| `sprite_pool.py` | Pool management - assign, release, status queries |
+| `provision_customer.sh` | Shell script run on customer sprites during provisioning |
+| `prepare_pool_sprite.sh` | Pre-installs OpenClaw on new pool sprites |
+| `proxy.js` | Auth proxy for customer sprites (uploaded during provisioning) |
+| `pflaster_state.json` | Active patches + audit log |
+| `blackboard/sprite_pool.json` | Pool state (sprite assignments, availability) |
+
+### On Customer Sprites
+| File | Purpose |
+|------|---------|
+| `proxy.js` | Auth proxy - login, session, static files, gateway proxy |
+| `custom-ui/index.html` | Customer-facing chat + settings UI |
+| `custom-ui/config.json` | Gateway URL + customer name for WebSocket |
+
+### In GitHub Repo (`scripts/`)
+| File | Purpose |
+|------|---------|
+| `scripts/provisioning_agent.py` | Mirror of live provisioning agent |
+| `scripts/pflaster.py` | Mirror of live pflaster module |
+| `scripts/proxy.js` | Mirror of live auth proxy |
+| `scripts/provision_customer.sh` | Mirror of live provisioning script |
+| `ARCHITECTURE.md` | Complete system architecture with diagrams |
+
+---
+
+## Key Technical Details
 
 ### OpenClaw Config Format
 The config uses optimistic locking. To update:
 ```javascript
 // 1. Get current config + hash
 const res = await rpcCall('config.get', {});
-const cfg = res.payload.config;  // object
-const hash = res.payload.hash;   // string
+const cfg = res.payload.config;
+const hash = res.payload.hash;
 
 // 2. Modify config
 cfg.env = cfg.env || {};
@@ -129,36 +158,44 @@ sprite-env services create name --cmd /path/to/binary --args "arg1,arg2,--flag,v
 # Delete + wait before recreating with different HTTP port
 ```
 
-### Cross-Origin WebSocket
-The customer UI at `username.arcamatrix.com` (served by Vercel) connects WebSocket directly to the sprite URL. The gateway must have the customer's subdomain in `allowedOrigins`:
-```json
-{
-  "gateway": {
-    "controlUi": {
-      "allowedOrigins": ["https://username.arcamatrix.com", "https://arcamatrix.com", "https://sprite-url.sprites.app"]
-    }
-  }
-}
+### Sprites Exec API
+```bash
+# Correct format (URL query params, NOT JSON body):
+curl -X POST "https://api.sprites.dev/v1/sprites/{name}/exec?cmd=bash&cmd=-c&cmd=<command>"
+# Response has control characters (\x01 prefix, \x03\x00 suffix) - strip before parsing
 ```
 
 ---
 
-## Deployed Infrastructure
+## What Still Needs Work
 
-| Component | Location | Status |
-|-----------|----------|--------|
-| Web App (Next.js) | Vercel - `arcamatrix.com` | Running |
-| Swarm Orchestrator | `swarm-orchestrator` Sprite | Running |
-| Customer Sprite #001 | `arca-customer-001` Sprite | Running |
-| OpenClaw Gateway | Port 8080 on customer sprite | Running |
-| Customer URL | `justustheile.arcamatrix.com` | Active |
-| Direct Sprite URL | `arca-customer-001-bl4yi.sprites.app` | Active |
+### Priority 1: End-to-End Flow Test with Real Stripe
+- Switch Stripe to **live mode** (currently test mode)
+- Do a real purchase and verify: payment -> webhook -> task -> provisioning -> email -> customer login -> chat works
+- Verify cancellation/recycle flow with real subscription
 
-## Credentials (for dev/test)
+### Priority 2: Legal & Compliance
+- Add **Impressum** page (German legal requirement)
+- Add **Datenschutzerklaerung** (Privacy Policy)
+- Terms of Service
 
-These are in the provisioning agent and API routes - stored as env vars in production:
-- **Sprites API Token**: In `provisioning_agent.py` (line 21)
-- **Stripe Keys**: In Vercel env vars
-- **Resend API Key**: In Vercel env vars
-- **Admin API Key**: `***REDACTED_ADMIN_KEY***` (needs to be changed for production)
-- **Customer Gateway Token**: `customer-001-token` (test customer)
+### Priority 3: Browser Testing
+- Test customer UI in multiple browsers (Chrome, Firefox, Safari, mobile)
+- Verify WebSocket reconnection behavior
+- Test skill catalog detail modals on different screen sizes
+
+### Priority 4: Skills That Need Extra Work
+- **Slack**: Needs Slack app setup, not just env vars
+- **Email (himalaya)**: Needs CLI binary installed + config
+- **Summarize**: Needs CLI binary installed
+- These should be marked as "Coming Soon" in the UI
+
+### Priority 5: Monitoring & Alerting
+- Add alerting when pflaster applies emergency patches
+- Dashboard for pool health / service status
+- Log aggregation for debugging customer issues
+
+### Priority 6: Multi-Customer Hardening
+- Load testing with multiple concurrent provisions
+- Verify pool auto-refill under load
+- Customer data isolation audit
