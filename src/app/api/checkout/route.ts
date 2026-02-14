@@ -4,7 +4,10 @@ import { VALID_SKILL_IDS } from "@/lib/skills";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || (() => {
+  console.error("CRITICAL: STRIPE_SECRET_KEY is not set — checkout will fail");
+  return "";
+})();
 const BASE_PRICE_CENTS = 700; // $7/month base subscription
 
 function validateSkillIds(skillIds: string[]): { valid: boolean; invalid: string[] } {
@@ -14,6 +17,10 @@ function validateSkillIds(skillIds: string[]): { valid: boolean; invalid: string
 
 export async function POST(request: Request) {
   try {
+    if (!STRIPE_SECRET_KEY) {
+      return NextResponse.json({ error: "Service not configured" }, { status: 503 });
+    }
+
     const body = await request.json();
     const { skills } = body;
 

@@ -66,13 +66,12 @@ async function verifyStripeSignature(payload: string, signature: string): Promis
 
 function generateUsername(email: string): string {
   const base = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+  const suffix = Array.from(crypto.getRandomValues(new Uint8Array(3)))
+    .map(b => b.toString(36).padStart(2, '0')).join('').substring(0, 4);
   if (base.length === 0) {
-    // Fallback for emails with no alphanumeric prefix
-    const hash = Array.from(new Uint8Array(crypto.getRandomValues(new Uint8Array(4))))
-      .map(b => b.toString(36)).join('');
-    return `user${hash}`;
+    return `user${suffix}`;
   }
-  return base.substring(0, 16);
+  return base.substring(0, 12) + suffix;
 }
 
 function generateTaskId(): string {

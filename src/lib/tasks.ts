@@ -3,7 +3,9 @@ const SPRITE_NAME = 'swarm-orchestrator';
 const TASKS_PATH = '/home/sprite/blackboard/tasks.json';
 
 function getSpritesToken() {
-  return process.env.SPRITES_API_TOKEN || process.env.SPRITES_TOKEN || '';
+  const token = process.env.SPRITES_API_TOKEN || process.env.SPRITES_TOKEN || '';
+  if (!token) console.error("CRITICAL: Neither SPRITES_API_TOKEN nor SPRITES_TOKEN is set — task operations will fail");
+  return token;
 }
 
 export interface TaskMetadata {

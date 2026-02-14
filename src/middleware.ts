@@ -24,6 +24,11 @@ export async function middleware(request: NextRequest) {
 
   const username = hostname.split('.arcamatrix.com')[0];
 
+  // Validate username format (only lowercase alphanumeric and hyphens)
+  if (!/^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$/.test(username) && !/^[a-z0-9]$/.test(username)) {
+    return new NextResponse('Not Found', { status: 404 });
+  }
+
   // Look up customer's sprite URL from hardcoded mappings
   const spriteUrl = customerMappings[username];
 

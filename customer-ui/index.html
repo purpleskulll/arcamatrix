@@ -644,7 +644,7 @@ function finalizeStreamingMessage(text, isError) {
 }
 
 function escapeHtml(t) {
-  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function sendMessage() {
@@ -734,17 +734,17 @@ async function loadSkillsGrid() {
       card.onclick = () => openSkillDetail(gwSkill.name);
       card.innerHTML = `
         <div class="skill-card-top">
-          <div class="skill-emoji">${meta.emoji}</div>
+          <div class="skill-emoji">${escapeHtml(meta.emoji)}</div>
           <div class="skill-card-info">
-            <div class="skill-card-name">${meta.label}</div>
-            <div class="skill-card-desc">${desc}</div>
+            <div class="skill-card-name">${escapeHtml(meta.label)}</div>
+            <div class="skill-card-desc">${escapeHtml(desc)}</div>
           </div>
         </div>
-        <span class="skill-card-badge ${badgeClass}">${badgeText}</span>`;
+        <span class="skill-card-badge ${badgeClass}">${escapeHtml(badgeText)}</span>`;
       grid.appendChild(card);
     });
   } catch (err) {
-    grid.innerHTML = `<div style="padding:40px;color:var(--error);text-align:center;grid-column:1/-1">Failed to load skills: ${err.message || 'Connection error'}</div>`;
+    grid.innerHTML = `<div style="padding:40px;color:var(--error);text-align:center;grid-column:1/-1">Failed to load skills: ${escapeHtml(err.message || 'Connection error')}</div>`;
   }
 }
 
@@ -773,32 +773,32 @@ function openSkillDetail(skillName) {
 
   let html = `
     <div class="skill-detail-header">
-      <div class="skill-detail-emoji">${meta.emoji}</div>
+      <div class="skill-detail-emoji">${escapeHtml(meta.emoji)}</div>
       <div class="skill-detail-title">
-        <h2>${meta.label}</h2>
+        <h2>${escapeHtml(meta.label)}</h2>
         <div class="skill-detail-status">${statusHtml}</div>
       </div>
     </div>
 
     <div class="skill-detail-section">
       <h3>About</h3>
-      <p>${desc}</p>
+      <p>${escapeHtml(desc)}</p>
     </div>`;
 
   if (meta.setup) {
-    html += `<div class="skill-detail-section"><h3>Setup</h3><p>${meta.setup}</p></div>`;
+    html += `<div class="skill-detail-section"><h3>Setup</h3><p>${escapeHtml(meta.setup)}</p></div>`;
   }
 
   const installOptions = gwSkill.install || [];
   if (missingBins.length > 0 && installOptions.length > 0) {
     html += `<div class="skill-detail-section"><h3>Installation Required</h3>`;
-    html += `<p style="margin-bottom:12px">This skill needs <strong>${missingBins.join(', ')}</strong> to be installed.</p>`;
+    html += `<p style="margin-bottom:12px">This skill needs <strong>${escapeHtml(missingBins.join(', '))}</strong> to be installed.</p>`;
     installOptions.forEach(opt => {
-      html += `<button class="btn-primary" style="margin-right:8px;margin-bottom:8px;padding:10px 18px;font-size:13px;min-height:44px" onclick="installSkillDep('${skillName}', '${opt.id}')">${opt.label}</button>`;
+      html += `<button class="btn-primary" style="margin-right:8px;margin-bottom:8px;padding:10px 18px;font-size:13px;min-height:44px" onclick="installSkillDep('${escapeHtml(skillName)}', '${escapeHtml(opt.id)}')">${escapeHtml(opt.label)}</button>`;
     });
     html += '</div>';
   } else if (missingBins.length > 0) {
-    html += `<div class="info-box" style="margin-top:16px"><p>This skill requires <strong>${missingBins.join(', ')}</strong> which cannot be automatically installed. Contact support for assistance.</p></div>`;
+    html += `<div class="info-box" style="margin-top:16px"><p>This skill requires <strong>${escapeHtml(missingBins.join(', '))}</strong> which cannot be automatically installed. Contact support for assistance.</p></div>`;
   }
 
   const allEnvVars = reqEnv.length > 0 ? reqEnv : missingEnv;
@@ -811,19 +811,20 @@ function openSkillDetail(skillName) {
       const isConfigured = missingEnv.indexOf(envVar) === -1;
       html += `
         <div class="cred-input-group">
-          <label>${label}</label>
+          <label>${escapeHtml(label)}</label>
           <input type="password"
-            id="detail-env-${envVar}"
-            placeholder="${isConfigured ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022 (already configured)' : 'Enter your ' + label}"
-            data-env="${envVar}">
-          ${hint ? `<div class="hint">${hint}</div>` : ''}
+            id="detail-env-${escapeHtml(envVar)}"
+            placeholder="${isConfigured ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022 (already configured)' : 'Enter your ' + escapeHtml(label)}"
+            data-env="${escapeHtml(envVar)}">
+          ${hint ? `<div class="hint">${escapeHtml(hint)}</div>` : ''}
         </div>`;
     });
 
     if (meta.links && meta.links.length > 0) {
       html += '<div class="help-links">';
       meta.links.forEach(link => {
-        html += `<a href="${link.url}" target="_blank" class="help-link">${link.label} &rarr;</a>`;
+        const safeUrl = /^https?:\/\//i.test(link.url) ? escapeHtml(link.url) : '#';
+        html += `<a href="${safeUrl}" target="_blank" class="help-link">${escapeHtml(link.label)} &rarr;</a>`;
       });
       html += '</div>';
     }
@@ -838,9 +839,9 @@ function openSkillDetail(skillName) {
   if (allEnvVars.length > 0) {
     const hasConfigured = allEnvVars.some(ev => missingEnv.indexOf(ev) === -1);
     if (hasConfigured) {
-      html += `<button class="btn-danger" onclick="confirmClearCreds('${skillName}')">Clear Credentials</button>`;
+      html += `<button class="btn-danger" onclick="confirmClearCreds('${escapeHtml(skillName)}')">Clear Credentials</button>`;
     }
-    html += `<button class="btn-primary" onclick="saveDetailCreds('${skillName}')">Save &amp; Activate</button>`;
+    html += `<button class="btn-primary" onclick="saveDetailCreds('${escapeHtml(skillName)}')">Save &amp; Activate</button>`;
   }
   html += '</div>';
 
@@ -1004,7 +1005,7 @@ async function loadSidebarSkills() {
         const meta = getSkillMeta(s.name);
         const el = document.createElement('div');
         el.className = 'mini-skill';
-        el.innerHTML = `<span class="dot"></span> ${meta.emoji} ${meta.label}`;
+        el.innerHTML = `<span class="dot"></span> ${escapeHtml(meta.emoji)} ${escapeHtml(meta.label)}`;
         list.appendChild(el);
       });
     } else {
