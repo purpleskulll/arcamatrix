@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createTask, findBySubscription } from "@/lib/tasks";
+import { createTask, findBySubscription, findByEventId } from "@/lib/tasks";
 
 // Force dynamic rendering - prevent static generation at build time
 export const dynamic = 'force-dynamic';
@@ -95,9 +95,9 @@ async function createProvisioningTask(data: {
   return taskId;
 }
 
-async function createRecycleTask(username: string, subscriptionId: string) {
+async function createRecycleTask(username: string, subscriptionId: string, stripeEventId: string) {
   const taskId = `RECYCLE-${Date.now()}`;
-  await createTask(taskId, "recycle", { username, subscriptionId });
+  await createTask(taskId, "recycle", { username, subscriptionId, stripeEventId });
   return taskId;
 }
 
@@ -159,6 +159,13 @@ export async function POST(request: Request) {
 
     const event = JSON.parse(body);
 
+    // Idempotency: reject already-processed events
+    const existingTaskId = await findByEventId(event.id);
+    if (existingTaskId) {
+      console.log(`Duplicate webhook event ${event.id} — already processed as ${existingTaskId}`);
+      return NextResponse.json({ received: true, duplicate: true, taskId: existingTaskId });
+    }
+
     // Handle checkout.session.completed
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
@@ -185,6 +192,7 @@ export async function POST(request: Request) {
           skills,
           stripeCustomerId,
           subscriptionId,
+          stripeEventId: event.id,
         });
 
         const spriteUrl = `https://${username}.arcamatrix.com`;
@@ -265,7 +273,7 @@ ${skills.map((s: string) => `- ${s}`).join("\n")}
 
         if (username) {
           // Create recycling task
-          const taskId = await createRecycleTask(username, subscriptionId);
+          const taskId = await createRecycleTask(username, subscriptionId, event.id);
           console.log(`✅ Recycling task created: ${taskId}`);
 
           const issueTitle = `[RECYCLE] ${username} - Task ${taskId}`;

@@ -15,6 +15,7 @@ export interface TaskMetadata {
   skills?: string[];
   stripeCustomerId?: string;
   subscriptionId?: string;
+  stripeEventId?: string;
 }
 
 export interface Task {
@@ -74,6 +75,16 @@ export async function findBySubscription(subscriptionId: string): Promise<{ task
   for (const [taskId, task] of Object.entries(store.tasks)) {
     if (task.metadata?.subscriptionId === subscriptionId) {
       return { taskId, username: task.metadata?.username || '' };
+    }
+  }
+  return null;
+}
+
+export async function findByEventId(stripeEventId: string): Promise<string | null> {
+  const store = await loadTasks();
+  for (const [taskId, task] of Object.entries(store.tasks)) {
+    if (task.metadata?.stripeEventId === stripeEventId) {
+      return taskId;
     }
   }
   return null;

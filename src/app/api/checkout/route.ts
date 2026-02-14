@@ -1,29 +1,11 @@
 import { NextResponse } from "next/server";
+import { VALID_SKILL_IDS } from "@/lib/skills";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const BASE_PRICE_CENTS = 700; // $7/month base subscription
-
-// All skills are included free with the base subscription
-const VALID_SKILL_IDS = new Set([
-  // Communication
-  "whatsapp", "telegram", "discord", "slack", "email", "imessage", "signal",
-  // Productivity & Notes
-  "calendar", "notion", "obsidian", "trello", "github",
-  "apple-notes", "apple-reminders", "bear-notes", "things",
-  // Development
-  "coding-agent",
-  // Media & Entertainment
-  "spotify", "youtube",
-  // Smart Home
-  "hue", "homekit",
-  // Utilities
-  "weather", "web-search", "voice", "1password",
-  // AI & Advanced
-  "canvas", "gemini", "summarize", "video-frames", "image-gen",
-]);
 
 function validateSkillIds(skillIds: string[]): { valid: boolean; invalid: string[] } {
   const invalid = skillIds.filter(id => !VALID_SKILL_IDS.has(id));

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { SKILL_LABELS } from "@/lib/skills";
 
 interface CustomerData {
   customer: { name: string; email: string };
@@ -15,35 +16,6 @@ interface CustomerData {
   workspaceUrl: string;
 }
 
-const SKILL_LABELS: Record<string, string> = {
-  "web-search": "Web Search",
-  "obsidian": "Obsidian Notes",
-  "spotify": "Spotify",
-  "hue": "Philips Hue",
-  "weather": "Weather",
-  "github": "GitHub",
-  "trello": "Trello",
-  "notion": "Notion",
-  "slack": "Slack",
-  "google-calendar": "Google Calendar",
-  "email": "Email",
-  "summarize": "Summarize",
-  "filesystem": "File System",
-  "discord": "Discord",
-  "telegram": "Telegram",
-  "whatsapp": "WhatsApp",
-  "calendar": "Calendar",
-  "coding-agent": "Coding Agent",
-  "youtube": "YouTube",
-  "homekit": "HomeKit",
-  "voice": "Voice",
-  "1password": "1Password",
-  "canvas": "Canvas",
-  "gemini": "Gemini",
-  "video-frames": "Video Frames",
-  "image-gen": "Image Gen",
-};
-
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,6 +24,42 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [data, setData] = useState<CustomerData | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+
+  // Restore session from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("arcamatrix_session");
+      if (!saved) return;
+      const { email: savedEmail, token } = JSON.parse(saved);
+      if (!savedEmail || !token) return;
+      setEmail(savedEmail);
+      setSessionToken(token);
+      // Fetch dashboard data with saved session
+      setLoading(true);
+      fetch("/api/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: savedEmail, sessionToken: token }),
+      })
+        .then((res) => res.json())
+        .then((result) => {
+          if (result.error) {
+            // Session expired — clear and show login
+            sessionStorage.removeItem("arcamatrix_session");
+            setSessionToken("");
+          } else {
+            setData(result);
+          }
+        })
+        .catch(() => {
+          sessionStorage.removeItem("arcamatrix_session");
+          setSessionToken("");
+        })
+        .finally(() => setLoading(false));
+    } catch {
+      sessionStorage.removeItem("arcamatrix_session");
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +80,7 @@ export default function LoginPage() {
       } else if (result.sessionToken) {
         setSessionToken(result.sessionToken);
         setData(result);
+        sessionStorage.setItem("arcamatrix_session", JSON.stringify({ email, token: result.sessionToken }));
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -102,6 +111,7 @@ export default function LoginPage() {
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem("arcamatrix_session");
     setData(null);
     setEmail("");
     setPassword("");

@@ -16,42 +16,40 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"chat" | "settings" | "skills">("chat");
 
   useEffect(() => {
-    // Fetch customer data from API using token from URL
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
+    if (!token) {
+      // No token — redirect to login
+      window.location.href = "/login";
+      return;
+    }
+
     const fetchCustomerData = async () => {
       try {
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get("token");
-
-        if (!token) {
-          console.error("No token provided");
-          // Use demo data as fallback
-          setCustomer({
-            email: "demo@example.com",
-            skills: ["whatsapp", "email", "calendar", "github"],
-            spriteUrl: "https://demo.sprites.dev",
-            status: "online",
-            aiProvider: "anthropic"
-          });
+        const response = await fetch(`/api/portal`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: "", sessionToken: token }),
+        });
+        if (!response.ok) {
+          window.location.href = "/login";
           return;
         }
-
-        const response = await fetch(`/api/customer?token=${token}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch customer data");
-        }
-
         const data = await response.json();
-        setCustomer(data);
-      } catch (error) {
-        console.error("Error fetching customer data:", error);
-        // Use demo data as fallback
+        if (data.error) {
+          window.location.href = "/login";
+          return;
+        }
         setCustomer({
-          email: "demo@example.com",
-          skills: ["whatsapp", "email", "calendar", "github"],
-          spriteUrl: "https://demo.sprites.dev",
+          email: data.customer?.email || "",
+          skills: data.skills || [],
+          spriteUrl: data.workspaceUrl || "",
           status: "online",
-          aiProvider: "anthropic"
+          aiProvider: "anthropic",
         });
+      } catch {
+        window.location.href = "/login";
       }
     };
 
