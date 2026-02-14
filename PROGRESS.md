@@ -87,7 +87,7 @@ All these RPC methods have been tested and work:
 | arca-customer-006 | Available |
 | arca-customer-007 | Available |
 | arca-customer-008 | Available |
-| arca-customer-009 | Available (new) |
+| arca-customer-010 | Preparing (OpenClaw installing) |
 
 ---
 
